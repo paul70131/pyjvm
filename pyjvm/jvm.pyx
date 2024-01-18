@@ -1,6 +1,10 @@
 from pyjvm.c.jni cimport JNI_GetCreatedJavaVMs_t, JNI_CreateJavaVM_t, jint, jsize, JavaVMInitArgs, JNI_VERSION_1_2, JavaVMOption
+from pyjvm.c.jni cimport jsize, jbyte, jclass
 from pyjvm.c.windows cimport HMODULE, GetModuleHandleA, GetProcAddress, LoadLibraryA
 from pyjvm.c.jvmti cimport JVMTI_VERSION_1_2
+
+from pyjvm.exceptions.exception import JniException
+from pyjvm.exceptions.exception cimport JvmExceptionPropagateIfThrown
 
 from pyjvm.types.clazz.jvmclass cimport JvmClassFromJclass, JvmClass
 
@@ -16,6 +20,13 @@ cdef class Jvm:
         self.jvm = NULL
         self.jni = NULL
         self.jvmti = NULL
+
+    @staticmethod
+    def aquire() -> Jvm:
+        try:
+            return Jvm.attach()
+        except Exception as e:
+            return Jvm.create()
 
     @staticmethod
     def create() -> Jvm:
@@ -38,19 +49,19 @@ cdef class Jvm:
         
         err = _JNI_GetCreatedJavaVMs(&jvm, 1, &nVMs)
         if err != 0:
-            raise Exception("Could not get created Java VMs", err)
+            raise JniException(err, "Could not get created Java VMs")
         if nVMs != 0:
-            raise Exception("Java VM already exists, use attach() instead")
+            raise JniException(0, "Java VM already exists, use attach() instead")
 
         err = _JNI_CreateJavaVM(&jvm, &jni, &args)
 
         if err != 0:
-            raise Exception("Could not create Java VM", err)
+            raise JniException(err, "Could not create Java VM")
 
         err = jvm[0].GetEnv(jvm, <void**>&jvmti, JVMTI_VERSION_1_2)
 
         if err != 0:
-            raise Exception("Could not get JVMTI environment", err)
+            raise JniException(err, "Could not get JVMTI environment")
 
         result = Jvm()
         result.jvm = jvm
@@ -94,11 +105,27 @@ cdef class Jvm:
 
         return result
 
-    cpdef object FindClass(self, str name):
+    cpdef object findClass(self, str name):
         cdef jclass cls = self.jni[0].FindClass(self.jni, name.encode("utf-8"))
         if cls == NULL:
             raise Exception("Could not find class", name)
         return JvmClassFromJclass(<unsigned long long>cls, self)
+
+
+    def destroy(self):
+        self.jvm[0].DestroyJavaVM(self.jvm)
+
+    def loadClass(self, object classfile):
+        # classfile is a file-like object opened in binary mode
+        cdef bytes bytecode = classfile.read()
+        cdef jsize length = len(bytecode)
+
+        cdef jclass cls = self.jni[0].DefineClass(self.jni, NULL, NULL, <const jbyte*>bytecode, length)
+        JvmExceptionPropagateIfThrown(self)
+
+        return JvmClassFromJclass(<unsigned long long>cls, self)
+
+
 
 
 

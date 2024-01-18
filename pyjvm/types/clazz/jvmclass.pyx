@@ -6,9 +6,14 @@ from pyjvm.types.clazz.jvmfield cimport JvmFieldFromJfieldID, JvmField
 from pyjvm.types.clazz.jvmmethod cimport JvmMethodFromJmethodID
 from pyjvm.types.object.jvmboundfield cimport JvmBoundField
 
+from pyjvm.types.clazz.special.jvmstring cimport JvmString
+from pyjvm.types.clazz.special.jvmexception import JvmException
+
 cdef class JvmClass:
-#    cdef jobject _jobject
-#    cdef object _class
+
+    @property
+    def _jobject(self):
+        return <unsigned long long>self._jobject
 
     def __init__(self, unsigned long long _jobject):
         self._jobject = <jobject>_jobject
@@ -33,10 +38,13 @@ cdef class JvmClass:
 
         return attr
 
-    
 
 class JvmClassMeta(type):
     members = ["_jclass", "signature", "jvm", "_fields", "_methods", "_loaded"]
+    _special_ancestors = {
+        "java.lang.String": JvmString,
+    }
+
     def __new__(cls, name, bases, attrs):
         return super().__new__(cls, name, bases, attrs)
     
@@ -142,11 +150,12 @@ class JvmClassMeta(type):
             raise Exception("error getting class methods", <int>error)
 
         for i in range(count):
+            
             method = JvmMethodFromJmethodID(method_ids[i], cid, cls)
             if method.name in cls._methods:
-                cls._methods[method.name].append(method)
+                cls._methods[method.name].add_overload(<unsigned long long>method_ids[i])
             else:
-                cls._methods[method.name] = [method,]
+                cls._methods[method.name] = method
 
         error = jvmti[0].Deallocate(jvmti, <unsigned char*>field_ids)
         if error != JVMTI_ERROR_NONE:
@@ -158,9 +167,17 @@ class JvmClassMeta(type):
         return super().__call__(*args, **kwargs)
 
 
-    
+cdef object JvmObjectFromJobject(unsigned long long jobj, Jvm jvm):
+    cdef jclass cid
+    cdef JNIEnv* jni = jvm.jni
 
-cdef object JvmClassFromJclass(unsigned long long cid, Jvm jvm):
+    if jobj == 0:
+        return None
+
+    cid = jni[0].GetObjectClass(jni, <jobject>jobj)
+    return JvmClassFromJclass(<unsigned long long>cid, jvm)(jobj)
+
+cdef object JvmClassFromJclass(unsigned long long cid, Jvm jvm, object top_base=JvmClass):
     cdef char* name
     cdef jvmtiEnv* jvmti = jvm.jvmti
     cdef JNIEnv* jni = jvm.jni
@@ -175,9 +192,10 @@ cdef object JvmClassFromJclass(unsigned long long cid, Jvm jvm):
     py_name = py_signature[1:-1].replace('/', '.')
 
     superclass = jni[0].GetSuperclass(jni, <jclass>cid)
-    bases = (JvmClass,)
+    bases = (top_base,)
     if superclass != NULL:
-        base = JvmClassFromJclass(<unsigned long long>superclass, jvm)
+        top_base = JvmClassMeta._special_ancestors.get(py_name, JvmClass)
+        base = JvmClassFromJclass(<unsigned long long>superclass, jvm, top_base=top_base)
         bases = (base,)
 
     error = jvmti[0].Deallocate(jvmti, <unsigned char*>name)

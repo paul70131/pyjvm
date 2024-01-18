@@ -50,7 +50,22 @@ extensions = [
         'pyjvm.types.converter.typeconverter',
         ['pyjvm/types/converter/typeconverter.pyx'],
         include_dirs=["./pyjvm", "./pyjvm/c/headers"],
-    )
+    ),
+    Extension(
+        'pyjvm.types.clazz.special.jvmstring',
+        ['pyjvm/types/clazz/special/jvmstring.pyx'],
+        include_dirs=["./pyjvm", "./pyjvm/c/headers"],
+    ),
+    Extension(
+        'pyjvm.types.clazz.special.jvmexception',
+        ['pyjvm/types/clazz/special/jvmexception.pyx'],
+        include_dirs=["./pyjvm", "./pyjvm/c/headers"],
+    ),
+    Extension(
+        'pyjvm.types.array.jvmarray',
+        ['pyjvm/types/array/jvmarray.pyx'],
+        include_dirs=["./pyjvm", "./pyjvm/c/headers"],
+    ),
 ]
 
 JAVA_HOME = os.environ.get("JAVA_HOME", None)

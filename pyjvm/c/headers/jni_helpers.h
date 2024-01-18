@@ -1,5 +1,7 @@
 typedef jint (*JNI_CreateJavaVM_t)(JavaVM **pvm, void **penv, void *args);
 typedef jint (*JNI_GetCreatedJavaVMs_t)(JavaVM **pvm, jsize bufLen, jsize *nVMs);
+typedef jint (*JNI_DestroyJavaVM_t)(JavaVM *vm);
+
 
 
 enum JVM_SIGNATURE {

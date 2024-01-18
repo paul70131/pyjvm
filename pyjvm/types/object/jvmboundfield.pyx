@@ -1,4 +1,4 @@
-from pyjvm.types.clazz.jvmclass cimport JvmClass
+from pyjvm.types.clazz.jvmclass cimport JvmClass, JvmObjectFromJobject
 from pyjvm.c.jni cimport jfieldID, jobject, JNIEnv
 from pyjvm.types.clazz.jvmfield cimport JvmField
 from pyjvm.jvm cimport Jvm
@@ -30,76 +30,75 @@ cdef class JvmBoundField:
         cdef object value
 
         if signature == JvmSignature.BOOLEAN:
-            return self.get_boolean(env, cid, fid)
+            return self.get_boolean(env, cid, fid, jvm)
         elif signature == JvmSignature.BYTE:
-            return self.get_byte(env, cid, fid)
+            return self.get_byte(env, cid, fid, jvm)
         elif signature == JvmSignature.CHAR:
-            return self.get_char(env, cid, fid)
+            return self.get_char(env, cid, fid, jvm)
         elif signature == JvmSignature.DOUBLE:
-            return self.get_double(env, cid, fid)
+            return self.get_double(env, cid, fid, jvm)
         elif signature == JvmSignature.FLOAT:
-            return self.get_float(env, cid, fid)
+            return self.get_float(env, cid, fid, jvm)
         elif signature == JvmSignature.INT:
-            return self.get_int(env, cid, fid)
+            return self.get_int(env, cid, fid, jvm)
         elif signature == JvmSignature.LONG:
-            return self.get_long(env, cid, fid)
+            return self.get_long(env, cid, fid, jvm)
         elif signature == JvmSignature.SHORT:
-            return self.get_short(env, cid, fid)
+            return self.get_short(env, cid, fid, jvm)
         else:
-            return self.get_object(env, cid, fid)
+            return self.get_object(env, cid, fid, jvm)
 
-    cdef object get_boolean(self, JNIEnv* env, jobject object, jfieldID fid):
+    cdef object get_boolean(self, JNIEnv* env, jobject object, jfieldID fid, Jvm jvm):
         cdef jboolean value
         value = env[0].GetBooleanField(env, object, fid)
-        JvmExceptionPropagateIfThrown(env)
+        JvmExceptionPropagateIfThrown(jvm)
         return value != 0
 
-    cdef object get_byte(self, JNIEnv* env, jobject object, jfieldID fid):
+    cdef object get_byte(self, JNIEnv* env, jobject object, jfieldID fid, Jvm jvm):
         cdef jbyte value
         value = env[0].GetByteField(env, object, fid)
-        JvmExceptionPropagateIfThrown(env)
+        JvmExceptionPropagateIfThrown(jvm)
         return <int>value
 
-    cdef object get_char(self, JNIEnv* env, jobject object, jfieldID fid):
+    cdef object get_char(self, JNIEnv* env, jobject object, jfieldID fid, Jvm jvm):
         cdef jchar value
         value = env[0].GetCharField(env, object, fid)
-        JvmExceptionPropagateIfThrown(env)
+        JvmExceptionPropagateIfThrown(jvm)
         return chr(value)
 
-    cdef object get_short(self, JNIEnv* env, jobject object, jfieldID fid):
+    cdef object get_short(self, JNIEnv* env, jobject object, jfieldID fid, Jvm jvm):
         cdef jshort value
         value = env[0].GetShortField(env, object, fid)
-        JvmExceptionPropagateIfThrown(env)
+        JvmExceptionPropagateIfThrown(jvm)
         return <int>value
 
-    cdef object get_int(self, JNIEnv* env, jobject object, jfieldID fid):
+    cdef object get_int(self, JNIEnv* env, jobject object, jfieldID fid, Jvm jvm):
         cdef jint value
         value = env[0].GetIntField(env, object, fid)
-        JvmExceptionPropagateIfThrown(env)
+        JvmExceptionPropagateIfThrown(jvm)
         return <long>value
 
-    cdef object get_long(self, JNIEnv* env, jobject object, jfieldID fid):
+    cdef object get_long(self, JNIEnv* env, jobject object, jfieldID fid, Jvm jvm):
         cdef jlong value
         value = env[0].GetLongField(env, object, fid)
-        JvmExceptionPropagateIfThrown(env)
+        JvmExceptionPropagateIfThrown(jvm)
         return <long long>value
 
-    cdef object get_float(self, JNIEnv* env, jobject object, jfieldID fid):
+    cdef object get_float(self, JNIEnv* env, jobject object, jfieldID fid, Jvm jvm):
         cdef jfloat value
         value = env[0].GetFloatField(env, object, fid)
-        JvmExceptionPropagateIfThrown(env)
+        JvmExceptionPropagateIfThrown(jvm)
         return <float>value
 
-    cdef object get_double(self, JNIEnv* env, jobject object, jfieldID fid):
+    cdef object get_double(self, JNIEnv* env, jobject object, jfieldID fid, Jvm jvm):
         cdef jdouble value
         value = env[0].GetDoubleField(env, object, fid)
-        JvmExceptionPropagateIfThrown(env)
+        JvmExceptionPropagateIfThrown(jvm)
         return <double>value
 
-    cdef object get_object(self, JNIEnv* env, jobject object, jfieldID fid):
+    cdef object get_object(self, JNIEnv* env, jobject object, jfieldID fid, Jvm jvm):
         cdef jobject value
         value = env[0].GetObjectField(env, object, fid)
-        JvmExceptionPropagateIfThrown(env)
+        JvmExceptionPropagateIfThrown(jvm)
 
-        clazz = self._object.__class__.jvm.FindClass(self._field._signature[1:-1])
-        return clazz(<unsigned long long>value)
+        return JvmObjectFromJobject(<unsigned long long>value, jvm)

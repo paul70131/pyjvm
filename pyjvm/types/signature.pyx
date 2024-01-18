@@ -12,6 +12,7 @@ class JvmSignature(Enum):
     DOUBLE = "D"
     VOID = "V"
     CLASS = "L"
+    ARRAY = "["
 
     def __eq__(self, other):
         if isinstance(other, JvmSignature):

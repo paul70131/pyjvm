@@ -9,4 +9,4 @@ cdef class Jvm:
     cdef jvmtiEnv* jvmti
     
 
-    cpdef object FindClass(self, str name)
+    cpdef object findClass(self, str name)

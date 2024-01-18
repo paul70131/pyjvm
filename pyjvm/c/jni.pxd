@@ -293,6 +293,8 @@ cdef extern from "jni.h":
         jobject (*NewDirectByteBuffer)(JNIEnv*, void* address, jlong capacity)
         void* (*GetDirectBufferAddress)(JNIEnv*, jobject)
         jlong (*GetDirectBufferCapacity)(JNIEnv*, jobject)
+
+        jclass (*DefineClass)(JNIEnv*, const char* name, jobject loader, const jbyte* buf, jsize len)
         
 
     struct JNIEnv_:

@@ -1,6 +1,6 @@
 from pyjvm.types.signature import JvmSignature
 from pyjvm.c.jni cimport jvalue, jboolean, jbyte, jchar, jshort, jint, jlong, jfloat, jdouble, jobject
-
+from pyjvm.types.clazz.special.jvmstring cimport JvmString
 
 cdef jboolean convert_to_bool(object pyobj) except *:
     return <jboolean><int>bool(pyobj)
@@ -10,7 +10,7 @@ cdef jbyte convert_to_byte(object pyobj) except *:
 
 cdef jchar convert_to_char(object pyobj) except *:
     if isinstance(pyobj, str) and len(pyobj) == 1:
-        return <jchar>pyobj[0]
+        return <jchar>ord(pyobj[0])
     else:
         return <jchar><int>pyobj
     
@@ -29,8 +29,15 @@ cdef jfloat convert_to_float(object pyobj) except *:
 cdef jdouble convert_to_double(object pyobj) except *:
     return <jdouble><double>pyobj
 
-cdef jobject convert_to_object(object pyobj) except *:
-    raise NotImplementedError
+cdef jobject convert_to_object(object pyobj, Jvm jvm) except *:
+    if pyobj is None:
+        return NULL
+
+    if isinstance(pyobj, str):
+        return JvmString.from_py(jvm, pyobj)._jobject
+    
+    else:
+        raise NotImplementedError
 
 
 

@@ -8,7 +8,8 @@ cdef class JvmClass:
     cdef jobject _jobject
     cdef object _class
 
-cdef object JvmClassFromJclass(unsigned long long cid, Jvm jvm)
+cdef object JvmClassFromJclass(unsigned long long cid, Jvm jvm, object top_base = *)
+cdef object JvmObjectFromJobject(unsigned long long jobj, Jvm jvm)
 
 
 
