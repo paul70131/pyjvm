@@ -221,6 +221,7 @@ cdef class JvmField:
     cdef void set_object(self, JNIEnv* env, jclass clazz, jfieldID fid, object value, Jvm jvm) except *:
         cdef jobject v = convert_to_object(value, jvm)
         env[0].SetStaticObjectField(env, clazz, fid, v)
+        
         JvmExceptionPropagateIfThrown(jvm)
 
     cdef void set_array(self, JNIEnv* env, jclass clazz, jfieldID fid, object value, Jvm jvm) except *:

@@ -4,6 +4,9 @@
 cdef extern from "jni.h":
 
     cdef int JNI_VERSION_1_2 = 0x00010002
+    
+    cdef int JNI_ABORT = 2
+    cdef int JNI_COMMIT = 1
 
     ctypedef unsigned char  jboolean
     ctypedef unsigned short jchar

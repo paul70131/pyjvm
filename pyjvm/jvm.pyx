@@ -11,22 +11,29 @@ from pyjvm.types.clazz.jvmclass cimport JvmClassFromJclass, JvmClass
 import os
 import faulthandler
 
+cdef Jvm __instance = None
+
 cdef class Jvm:
     #cdef JavaVM* jvm
     #cdef JNIEnv* jni
     #cdef jvmtiEnv* jvmti
+    #cdef public dict __classes
 
     def __cinit__(self):
         self.jvm = NULL
         self.jni = NULL
         self.jvmti = NULL
+        self.__classes = {}
 
     @staticmethod
     def aquire() -> Jvm:
-        try:
-            return Jvm.attach()
-        except Exception as e:
-            return Jvm.create()
+        if __instance == None:
+            try:
+                return Jvm.attach()
+            except Exception as e:
+                return Jvm.create()
+        else:
+            return __instance
 
     @staticmethod
     def create() -> Jvm:
@@ -68,6 +75,8 @@ cdef class Jvm:
         result.jni = jni
         result.jvmti = jvmti
 
+        __instance = result
+
         return result
 
     
@@ -103,12 +112,14 @@ cdef class Jvm:
         result.jni = jni
         result.jvmti = jvmti
 
+        __instance = result
+
         return result
 
     cpdef object findClass(self, str name):
         cdef jclass cls = self.jni[0].FindClass(self.jni, name.encode("utf-8"))
-        if cls == NULL:
-            raise Exception("Could not find class", name)
+        JvmExceptionPropagateIfThrown(self)
+
         return JvmClassFromJclass(<unsigned long long>cls, self)
 
 

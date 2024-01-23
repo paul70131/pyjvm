@@ -13,7 +13,6 @@ class TestStaticMethods(TestCase):
         except:
             to_load = "test/java/TestStaticMethods.java"
             class_file = compile_java(to_load)
-            jvm = Jvm.aquire()
 
             with open(class_file, 'rb') as f:
                 return jvm.loadClass(f)

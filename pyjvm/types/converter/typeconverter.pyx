@@ -1,6 +1,7 @@
 from pyjvm.types.signature import JvmSignature
 from pyjvm.c.jni cimport jvalue, jboolean, jbyte, jchar, jshort, jint, jlong, jfloat, jdouble, jobject
 from pyjvm.types.clazz.special.jvmstring cimport JvmString
+from pyjvm.types.clazz.jvmclass cimport JvmClass
 
 cdef jboolean convert_to_bool(object pyobj) except *:
     return <jboolean><int>bool(pyobj)
@@ -34,7 +35,11 @@ cdef jobject convert_to_object(object pyobj, Jvm jvm) except *:
         return NULL
 
     if isinstance(pyobj, str):
-        return JvmString.from_py(jvm, pyobj)._jobject
+        javaLangString = jvm.findClass('java/lang/String')
+        return <jobject><unsigned long long>javaLangString(pyobj)._jobject
+    
+    if isinstance(pyobj, JvmClass):
+        return <jobject><unsigned long long>pyobj._jobject
     
     else:
         raise NotImplementedError

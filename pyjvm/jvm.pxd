@@ -7,6 +7,7 @@ cdef class Jvm:
     cdef JavaVM* jvm
     cdef JNIEnv* jni
     cdef jvmtiEnv* jvmti
+    cdef public dict __classes
     
 
     cpdef object findClass(self, str name)

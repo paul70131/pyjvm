@@ -47,6 +47,11 @@ extensions = [
         include_dirs=["./pyjvm", "./pyjvm/c/headers"],
     ),
     Extension(
+        'pyjvm.types.object.jvmboundmethod',
+        ['pyjvm/types/object/jvmboundmethod.pyx'],
+        include_dirs=["./pyjvm", "./pyjvm/c/headers"],
+    ),
+    Extension(
         'pyjvm.types.converter.typeconverter',
         ['pyjvm/types/converter/typeconverter.pyx'],
         include_dirs=["./pyjvm", "./pyjvm/c/headers"],

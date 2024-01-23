@@ -10,19 +10,18 @@ from pyjvm.types.clazz.jvmclass cimport JvmClass, JvmObjectFromJobject
 
 cdef class JvmString(JvmClass):
 
-    @staticmethod
-    cdef JvmString from_py(Jvm jvm, str s):
-        cdef JNIEnv* jni = jvm.jni
-        cdef jstring jstr = jni[0].NewStringUTF(jni, s.encode("utf-8"))
-        JvmExceptionPropagateIfThrown(jvm)
-        return JvmObjectFromJobject(<unsigned long long>jstr, jvm)
-
-    
 
     def __init__(self, data):
-        if isinstance(data, int):
-            # From jobject
-            super().__init__(data)
+        cdef jobject _jobject
+        cdef Jvm jvm = self.__class__.jvm
+        cdef JNIEnv* jni = jvm.jni
+        if isinstance(data, str):
+            _jobject = jni[0].NewStringUTF(jni, data.encode("utf-8"))
+            JvmExceptionPropagateIfThrown(jvm)
+
+            data = <unsigned long long>_jobject
+            
+        super().__init__(data)
     
 
     def __len__(self):
@@ -38,7 +37,7 @@ cdef class JvmString(JvmClass):
         return self.__get_data()
 
     def __repr__(self):
-        return f"J'{self.__str__()}'"
+        return self.__get_data()
 
     def __eq__(self, other):
         if isinstance(other, JvmString):

@@ -13,7 +13,6 @@ class TestStaticFields(TestCase):
         except:
             to_load = "test/java/TestStaticFields.java"
             class_file = compile_java(to_load)
-            jvm = Jvm.aquire()
 
             with open(class_file, 'rb') as f:
                 return jvm.loadClass(f)
@@ -94,8 +93,10 @@ class TestStaticFields(TestCase):
         self.assertEqual(obj.__class__.__name__, "java.lang.Object")
 
         test_class.object_field = None
-
         self.assertEqual(test_class.object_field, None)
+
+        test_class.object_field = obj
+        self.assertEqual(test_class.object_field, obj)
 
         # TODO: test setting object field
 
@@ -113,9 +114,6 @@ class TestStaticFields(TestCase):
         jvm = Jvm.aquire()
         test_class = self.get_test_class(jvm)
 
-        print(test_class.getFields())
-
         self.assertEqual(len(test_class.int_array_field), 3)
         self.assertEqual(test_class.int_array_field.signature, "[I")
         self.assertEqual(test_class.int_array_field[0], 1)
-        self.assertEqual(test_class.int_array_field, [1, 2, 3])

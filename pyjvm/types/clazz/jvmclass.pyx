@@ -3,8 +3,9 @@ from pyjvm.jvm cimport Jvm
 from pyjvm.c.jvmti cimport JVMTI_ERROR_NONE, jvmtiEnv
 
 from pyjvm.types.clazz.jvmfield cimport JvmFieldFromJfieldID, JvmField
-from pyjvm.types.clazz.jvmmethod cimport JvmMethodFromJmethodID
+from pyjvm.types.clazz.jvmmethod cimport JvmMethodFromJmethodID, JvmMethod
 from pyjvm.types.object.jvmboundfield cimport JvmBoundField
+from pyjvm.types.object.jvmboundmethod cimport JvmBoundMethod
 
 from pyjvm.types.clazz.special.jvmstring cimport JvmString
 from pyjvm.types.clazz.special.jvmexception import JvmException
@@ -16,7 +17,30 @@ cdef class JvmClass:
         return <unsigned long long>self._jobject
 
     def __init__(self, unsigned long long _jobject):
-        self._jobject = <jobject>_jobject
+        cdef jclass cid = <jclass>_jobject
+        cdef Jvm jvm = <Jvm>self.__class__.jvm
+        cdef JNIEnv* jni = jvm.jni
+
+        self._jobject = jni[0].NewGlobalRef(jni, cid)
+        jni[0].DeleteLocalRef(jni, cid)
+
+    def __del__(self):
+        cdef Jvm jvm = <Jvm>self.__class__.jvm
+        cdef JNIEnv* jni = jvm.jni
+        
+        jni[0].DeleteGlobalRef(jni, self._jobject)
+
+    def __str__(self):
+        return str(self.toString())
+    
+    def __repr__(self):
+        return repr(self.toString())
+
+    def __eq__(self, other):
+        if isinstance(other, JvmClass):
+            return self.equals(other)
+        print("not a jvm class")
+        return False
 
     def __getattr__(self, name):
         cls = self.__class__
@@ -35,6 +59,9 @@ cdef class JvmClass:
         
         if isinstance(attr, JvmField):
             return JvmBoundField(attr, self).get()
+        
+        if isinstance(attr, JvmMethod):
+            return JvmBoundMethod(attr, self)
 
         return attr
 
@@ -44,6 +71,11 @@ class JvmClassMeta(type):
     _special_ancestors = {
         "java.lang.String": JvmString,
     }
+
+    def __del__(self):
+        cdef Jvm jvm = <Jvm>self.jvm
+        cdef JNIEnv* jni = jvm.jni
+        jni[0].DeleteGlobalRef(jni, <jobject><unsigned long long>self._jclass)
 
     def __new__(cls, name, bases, attrs):
         return super().__new__(cls, name, bases, attrs)
@@ -72,6 +104,7 @@ class JvmClassMeta(type):
 
         if attr and isinstance(attr, JvmField): # always true
             attr.set(self, value)
+        
         return
 
 
@@ -175,6 +208,7 @@ cdef object JvmObjectFromJobject(unsigned long long jobj, Jvm jvm):
         return None
 
     cid = jni[0].GetObjectClass(jni, <jobject>jobj)
+
     return JvmClassFromJclass(<unsigned long long>cid, jvm)(jobj)
 
 cdef object JvmClassFromJclass(unsigned long long cid, Jvm jvm, object top_base=JvmClass):
@@ -183,6 +217,15 @@ cdef object JvmClassFromJclass(unsigned long long cid, Jvm jvm, object top_base=
     cdef JNIEnv* jni = jvm.jni
     cdef jint error
     cdef jclass superclass
+    cdef jclass new_cid
+
+    if cid in jvm.__classes:
+        jni[0].DeleteLocalRef(jni, <jobject>cid)
+        return jvm.__classes[cid]
+
+    new_cid = jni[0].NewGlobalRef(jni, <jobject>cid)
+    jni[0].DeleteLocalRef(jni, <jobject>cid)
+    cid = <unsigned long long>new_cid
 
     error = jvmti[0].GetClassSignature(jvmti, <jclass>cid, &name, NULL)
     if error != JVMTI_ERROR_NONE:
@@ -202,7 +245,9 @@ cdef object JvmClassFromJclass(unsigned long long cid, Jvm jvm, object top_base=
     if error != JVMTI_ERROR_NONE:
         raise Exception("error deallocating class signature", <int>error)
 
-    return JvmClassMeta(py_name, bases, {'_jclass': <unsigned long long>cid, 'signature': py_signature, 'jvm': jvm})
+    c = JvmClassMeta(py_name, bases, {'_jclass': <unsigned long long>cid, 'signature': py_signature, 'jvm': jvm})
+    jvm.__classes[cid] = c
+    return c
 
 
 # class JvmClass(metaclass=JvmClassMeta):
