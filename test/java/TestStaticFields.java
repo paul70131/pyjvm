@@ -1,10 +1,14 @@
 package test.java;
 
+import java.lang.annotation.*;
+
 
 public class TestStaticFields {
     public int number;
     
+    @Retention(RetentionPolicy.RUNTIME)
     public static boolean bool_field = true;
+
     public static byte byte_field = 1;
     public static char char_field = 'a';
     public static short short_field = 2;

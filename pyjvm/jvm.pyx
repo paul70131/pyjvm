@@ -1,12 +1,13 @@
 from pyjvm.c.jni cimport JNI_GetCreatedJavaVMs_t, JNI_CreateJavaVM_t, jint, jsize, JavaVMInitArgs, JNI_VERSION_1_2, JavaVMOption
 from pyjvm.c.jni cimport jsize, jbyte, jclass
 from pyjvm.c.windows cimport HMODULE, GetModuleHandleA, GetProcAddress, LoadLibraryA
-from pyjvm.c.jvmti cimport JVMTI_VERSION_1_2, jvmtiError, jvmtiEnv, jvmtiPhase, JVMTI_PHASE_DEAD, JVMTI_PHASE_ONLOAD, JVMTI_PHASE_PRIMORDIAL
+from pyjvm.c.jvmti cimport JVMTI_VERSION_1_2, jvmtiError, jvmtiEnv, jvmtiPhase, JVMTI_PHASE_DEAD, JVMTI_PHASE_ONLOAD, JVMTI_PHASE_PRIMORDIAL, jvmtiCapabilities
 
-from pyjvm.exceptions.exception import JniException
+from pyjvm.exceptions.exception import JniException, JvmtiException
 from pyjvm.exceptions.exception cimport JvmExceptionPropagateIfThrown
 
 from pyjvm.types.clazz.jvmclass cimport JvmClassFromJclass, JvmClass
+from libc.string cimport memset
 
 import os
 import time
@@ -174,6 +175,104 @@ cdef class Jvm:
             raise JniException(0, "Class not prepared yet")
 
         return JvmClassFromJclass(<unsigned long long>cls, self)
+
+    cpdef void ensure_capability(self, str capability) except *:
+        cdef jvmtiCapabilities capas
+        cdef jvmtiError error
+
+        memset(&capas, 0, sizeof(jvmtiCapabilities))
+
+        if capability == "can_tag_objects":
+            capas.can_tag_objects = 1
+        elif capability == "can_generate_field_modification_events":
+            capas.can_generate_field_modification_events = 1
+        elif capability == "can_generate_field_access_events" :
+            capas.can_generate_field_access_events = 1
+        elif capability == "can_get_bytecodes":
+            capas.can_get_bytecodes = 1
+        elif capability == "can_get_synthetic_attribute":
+            capas.can_get_synthetic_attribute = 1
+        elif capability == "can_get_owned_monitor_info":
+            capas.can_get_owned_monitor_info = 1
+        elif capability == "can_get_current_contended_monitor":
+            capas.can_get_current_contended_monitor = 1
+        elif capability == "can_get_monitor_info":
+            capas.can_get_monitor_info = 1
+        elif capability == "can_pop_frame":
+            capas.can_pop_frame = 1
+        elif capability == "can_redefine_classes":
+            capas.can_redefine_classes = 1
+        elif capability == "can_signal_thread":
+            capas.can_signal_thread = 1
+        elif capability == "can_get_source_file_name":
+            capas.can_get_source_file_name = 1
+        elif capability == "can_get_line_numbers":
+            capas.can_get_line_numbers = 1
+        elif capability == "can_get_source_debug_extension":
+            capas.can_get_source_debug_extension = 1
+        elif capability == "can_access_local_variables":
+            capas.can_access_local_variables = 1
+        elif capability == "can_maintain_original_method_order":
+            capas.can_maintain_original_method_order = 1
+        elif capability == "can_generate_single_step_events":
+            capas.can_generate_single_step_events = 1
+        elif capability == "can_generate_exception_events":
+            capas.can_generate_exception_events = 1
+        elif capability == "can_generate_frame_pop_events":
+            capas.can_generate_frame_pop_events = 1
+        elif capability == "can_generate_breakpoint_events":
+            capas.can_generate_breakpoint_events = 1
+        elif capability == "can_suspend":
+            capas.can_suspend = 1
+        elif capability == "can_redefine_any_class":
+            capas.can_redefine_any_class = 1
+        elif capability == "can_get_current_thread_cpu_time":
+            capas.can_get_current_thread_cpu_time = 1
+        elif capability == "can_get_thread_cpu_time":
+            capas.can_get_thread_cpu_time = 1
+        elif capability == "can_generate_method_entry_events":
+            capas.can_generate_method_entry_events = 1
+        elif capability == "can_generate_method_exit_events":
+            capas.can_generate_method_exit_events = 1
+        elif capability == "can_generate_all_class_hook_events":
+            capas.can_generate_all_class_hook_events = 1
+        elif capability == "can_generate_compiled_method_load_events":
+            capas.can_generate_compiled_method_load_events = 1
+        elif capability == "can_generate_monitor_events":
+            capas.can_generate_monitor_events = 1
+        elif capability == "can_generate_vm_object_alloc_events":
+            capas.can_generate_vm_object_alloc_events = 1
+        elif capability == "can_generate_native_method_bind_events":
+            capas.can_generate_native_method_bind_events = 1
+        elif capability == "can_generate_garbage_collection_events":
+            capas.can_generate_garbage_collection_events = 1
+        elif capability == "can_generate_object_free_events":
+            capas.can_generate_object_free_events = 1
+        elif capability == "can_force_early_return":
+            capas.can_force_early_return = 1
+        elif capability == "can_get_owned_monitor_stack_depth_info":
+            capas.can_get_owned_monitor_stack_depth_info = 1
+        elif capability == "can_get_constant_pool":
+            capas.can_get_constant_pool = 1
+        elif capability == "can_set_native_method_prefix":
+            capas.can_set_native_method_prefix = 1
+        elif capability == "can_retransform_classes":
+            capas.can_retransform_classes = 1
+        elif capability == "can_retransform_any_class":
+            capas.can_retransform_any_class = 1
+        elif capability == "can_generate_resource_exhaustion_heap_events":
+            capas.can_generate_resource_exhaustion_heap_events = 1
+        elif capability == "can_generate_resource_exhaustion_threads_events":
+            capas.can_generate_resource_exhaustion_threads_events = 1
+        else:
+            raise Exception("Unknown capability: " + capability)
+        
+        error = self.jvmti[0].AddCapabilities(self.jvmti, &capas)
+        if error != 0:
+            raise JvmtiException(error, "Could not add capability")
+
+    
+
 
 
 

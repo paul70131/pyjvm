@@ -14,10 +14,15 @@ from pyjvm.types.clazz.special.jvmexception import JvmException
 
 from pyjvm.exceptions.exception cimport JvmExceptionPropagateIfThrown
 from pyjvm.types.clazz.jvmmethod cimport JvmMethodReference
+from pyjvm.bytecode.jvmbytecodeclass cimport JvmBytecodeClass
 
 from libc.stdlib cimport free
 
 cdef class JvmClass:
+
+    @staticmethod
+    def is_java():
+        return False
 
     @property
     def _jobject(self):
@@ -72,8 +77,9 @@ cdef class JvmClass:
     def __del__(self):
         cdef Jvm jvm = <Jvm>self.__class__.jvm
         cdef JNIEnv* jni = jvm.jni
-        
-        jni[0].DeleteGlobalRef(jni, self._jobject)
+
+        if self._jobject != NULL:
+            jni[0].DeleteGlobalRef(jni, self._jobject)
 
     def __str__(self):
         return str(self.toString())
@@ -129,8 +135,20 @@ class JvmClassMeta(type):
 
     def __new__(cls, name, bases, attrs):
         return super().__new__(cls, name, bases, attrs)
+
+    def is_java(cls):
+        return True
+
+    def __inherit(cls, name, bases, attrs):
+        if not isinstance(bases[0], JvmClassMeta):
+            raise TypeError("cannot inherit from non-JvmClass")
+        
+        bytecodeBase = JvmBytecodeClass(bases[0])
     
     def __init__(cls, name, bases, attrs):
+        if '_jclass' not in attrs:
+            cls.__inherit(name, bases, attrs)
+            return
         cls._jclass = attrs['_jclass']
         cls.signature = attrs['signature']
         cls.jvm = attrs['jvm']

@@ -67,6 +67,48 @@ cdef extern from "jvmti.h":
         JVMTI_ERROR_INVALID_ENVIRONMENT = 116,
         JVMTI_ERROR_MAX = 116
 
+    ctypedef packed struct jvmtiCapabilities:
+        bint can_tag_objects 
+        bint can_generate_field_modification_events
+        bint can_generate_field_access_events
+        bint can_get_bytecodes
+        bint can_get_synthetic_attribute
+        bint can_get_owned_monitor_info
+        bint can_get_current_contended_monitor
+        bint can_get_monitor_info
+        bint can_pop_frame
+        bint can_redefine_classes
+        bint can_signal_thread
+        bint can_get_source_file_name
+        bint can_get_line_numbers
+        bint can_get_source_debug_extension
+        bint can_access_local_variables
+        bint can_maintain_original_method_order
+        bint can_generate_single_step_events
+        bint can_generate_exception_events
+        bint can_generate_frame_pop_events
+        bint can_generate_breakpoint_events
+        bint can_suspend
+        bint can_redefine_any_class
+        bint can_get_current_thread_cpu_time 
+        bint can_get_thread_cpu_time 
+        bint can_generate_method_entry_events 
+        bint can_generate_method_exit_events 
+        bint can_generate_all_class_hook_events 
+        bint can_generate_compiled_method_load_events 
+        bint can_generate_monitor_events 
+        bint can_generate_vm_object_alloc_events 
+        bint can_generate_native_method_bind_events 
+        bint can_generate_garbage_collection_events 
+        bint can_generate_object_free_events 
+        bint can_force_early_return
+        bint can_get_owned_monitor_stack_depth_info
+        bint can_get_constant_pool 
+        bint can_set_native_method_prefix 
+        bint can_retransform_classes 
+        bint can_retransform_any_class 
+        bint can_generate_resource_exhaustion_heap_events 
+        bint can_generate_resource_exhaustion_threads_events 
     
     ctypedef jvmtiInterface_1_* jvmtiEnv
     ctypedef struct jvmtiInterface_1_:
@@ -89,3 +131,9 @@ cdef extern from "jvmti.h":
         jvmtiError (*GetClassStatus) (jvmtiEnv* env, jclass klass, jint* status_ptr)
 
         jvmtiError (*GetPhase) (jvmtiEnv* env, jvmtiPhase* phase_ptr)
+
+        jvmtiError (*GetConstantPool) (jvmtiEnv* env, jclass klass, jint* constant_pool_count_ptr, jint* constant_pool_byte_count_ptr, unsigned char** constant_pool_bytes_ptr)
+        jvmtiError (*GetClassVersionNumbers) (jvmtiEnv* env, jclass klass, jint* version_ptr, jint* sub_version_ptr)
+        jvmtiError (*GetClassModifiers) (jvmtiEnv* env, jclass klass, jint* modifiers_ptr)
+
+        jvmtiError (*AddCapabilities) (jvmtiEnv* env, jvmtiCapabilities* capabilities_ptr)

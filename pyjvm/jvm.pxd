@@ -9,5 +9,6 @@ cdef class Jvm:
     cdef jvmtiEnv* jvmti
     cdef public dict __classes
     
+    cpdef void ensure_capability(self, str capability) except *
 
     cpdef object findClass(self, str name)

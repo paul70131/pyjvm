@@ -76,6 +76,41 @@ extensions = [
         ['pyjvm/types/array/jvmarray.pyx'],
         include_dirs=["./pyjvm", "./pyjvm/c/headers"],
     ),
+    Extension(
+        'pyjvm.bytecode.jvmbytecodeclass',
+        ['pyjvm/bytecode/jvmbytecodeclass.pyx'],
+        include_dirs=["./pyjvm", "./pyjvm/c/headers"],
+    ),
+    Extension(
+        'pyjvm.bytecode.components.jvmbytecodefields',
+        ['pyjvm/bytecode/components/jvmbytecodefields.pyx'],
+        include_dirs=["./pyjvm", "./pyjvm/c/headers"],
+    ),
+    Extension(
+        'pyjvm.bytecode.components.jvmbytecodemethods',
+        ['pyjvm/bytecode/components/jvmbytecodemethods.pyx'],
+        include_dirs=["./pyjvm", "./pyjvm/c/headers"],
+    ),
+    Extension(
+        'pyjvm.bytecode.components.jvmbytecodeattributes',
+        ['pyjvm/bytecode/components/jvmbytecodeattributes.pyx'],
+        include_dirs=["./pyjvm", "./pyjvm/c/headers"],
+    ),
+    Extension(
+        'pyjvm.bytecode.components.jvmbytecodeconstantpool',
+        ['pyjvm/bytecode/components/jvmbytecodeconstantpool.pyx'],
+        include_dirs=["./pyjvm", "./pyjvm/c/headers"],
+    ),
+    Extension(
+        'pyjvm.bytecode.components.jvmbytecodeinterfaces',
+        ['pyjvm/bytecode/components/jvmbytecodeinterfaces.pyx'],
+        include_dirs=["./pyjvm", "./pyjvm/c/headers"],
+    ),
+    Extension(
+        'pyjvm.bytecode.components.base',
+        ['pyjvm/bytecode/components/base.pyx'],
+        include_dirs=["./pyjvm", "./pyjvm/c/headers"],
+    ),
 ]
 
 JAVA_HOME = os.environ.get("JAVA_HOME", None)

@@ -13,9 +13,9 @@ class TestAttachCreate(TestCase):
         
         jvm = Jvm.aquire()
 
-        javaLangObject = jvm.findClass("java/lang/Object")
+        TestStaticFields = jvm.findClass("test/java/TestStaticFields")
 
-        class TestInherit(javaLangObject):
+        class TestInherit(TestStaticFields):
             package = "test.java"
         
             
