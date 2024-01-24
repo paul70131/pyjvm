@@ -13,9 +13,12 @@ cdef class JvmArray:
     cdef length(self)
 
     cdef tuple get(self, int start, int length)
+    cdef void set(self, int offset, object value) except *
 
 cdef class JvmObjectArray(JvmArray):
-    pass
+    
+    cdef tuple get(self, int start, int length)
+    cdef void set(self, int offset, object value) except *
 
 cdef class JvmPrimitiveArray(JvmArray):
     pass
@@ -30,6 +33,19 @@ cdef class JvmPrimitiveArray(JvmArray):
     cdef tuple get_long(self, JNIEnv* env, jarray array, jsize start, jsize length)
     cdef tuple get_float(self, JNIEnv* env, jarray array, jsize start, jsize length)
     cdef tuple get_double(self, JNIEnv* env, jarray array, jsize start, jsize length)
+
+
+    
+    cdef void set(self, int offset, object value) except *
+
+    cdef void set_bool(self, JNIEnv* env, jarray array, int index, object value, Jvm jvm) except *
+    cdef void set_byte(self, JNIEnv* env, jarray array, int index,object value, Jvm jvm) except *
+    cdef void set_char(self, JNIEnv* env, jarray array, int index,object value, Jvm jvm) except *
+    cdef void set_short(self, JNIEnv* env, jarray array, int index,object value, Jvm jvm) except *
+    cdef void set_int(self, JNIEnv* env, jarray array, int index,object value, Jvm jvm) except *
+    cdef void set_long(self, JNIEnv* env, jarray array, int index,object value, Jvm jvm) except *
+    cdef void set_float(self, JNIEnv* env, jarray array, int index,object value, Jvm jvm) except *
+    cdef void set_double(self, JNIEnv* env, jarray array, int index,object value, Jvm jvm) except *
 
 
 

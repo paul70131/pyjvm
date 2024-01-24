@@ -1,7 +1,7 @@
 from pyjvm.c.jni cimport JNI_GetCreatedJavaVMs_t, JNI_CreateJavaVM_t, jint, jsize, JavaVMInitArgs, JNI_VERSION_1_2, JavaVMOption
 from pyjvm.c.jni cimport jsize, jbyte, jclass
 from pyjvm.c.windows cimport HMODULE, GetModuleHandleA, GetProcAddress, LoadLibraryA
-from pyjvm.c.jvmti cimport JVMTI_VERSION_1_2
+from pyjvm.c.jvmti cimport JVMTI_VERSION_1_2, jvmtiError, jvmtiEnv, jvmtiPhase, JVMTI_PHASE_DEAD, JVMTI_PHASE_ONLOAD, JVMTI_PHASE_PRIMORDIAL
 
 from pyjvm.exceptions.exception import JniException
 from pyjvm.exceptions.exception cimport JvmExceptionPropagateIfThrown
@@ -9,6 +9,7 @@ from pyjvm.exceptions.exception cimport JvmExceptionPropagateIfThrown
 from pyjvm.types.clazz.jvmclass cimport JvmClassFromJclass, JvmClass
 
 import os
+import time
 import faulthandler
 
 cdef Jvm __instance = None
@@ -29,11 +30,37 @@ cdef class Jvm:
     def aquire() -> Jvm:
         if __instance == None:
             try:
-                return Jvm.attach()
+                jvm = Jvm.attach()
+                return jvm
+
             except Exception as e:
-                return Jvm.create()
+                jvm = Jvm.create()
+                jvm.ensure_started()
+                return jvm
         else:
             return __instance
+
+    def ensure_started(self):
+        cdef jvmtiPhase phase
+        cdef jvmtiError err
+
+
+        err = self.jvmti[0].GetPhase(self.jvmti, &phase)
+        if err != 0:
+            raise JniException(err, "Could not get JVMTI phase")
+
+        if phase == JVMTI_PHASE_DEAD:
+            raise JniException(0, "JVM is dead")
+        
+        while phase == JVMTI_PHASE_ONLOAD or phase == JVMTI_PHASE_PRIMORDIAL:
+            time.sleep(0)
+            err = self.jvmti[0].GetPhase(self.jvmti, &phase)
+
+            if err != 0:
+                raise JniException(err, "Could not get JVMTI phase")
+
+        return
+
 
     @staticmethod
     def create() -> Jvm:
@@ -117,6 +144,9 @@ cdef class Jvm:
         return result
 
     cpdef object findClass(self, str name):
+        if name in self.__classes:
+            return self.__classes[name]
+
         cdef jclass cls = self.jni[0].FindClass(self.jni, name.encode("utf-8"))
         JvmExceptionPropagateIfThrown(self)
 
@@ -130,9 +160,18 @@ cdef class Jvm:
         # classfile is a file-like object opened in binary mode
         cdef bytes bytecode = classfile.read()
         cdef jsize length = len(bytecode)
+        cdef jvmtiError err
+        cdef jint status = 0
 
         cdef jclass cls = self.jni[0].DefineClass(self.jni, NULL, NULL, <const jbyte*>bytecode, length)
         JvmExceptionPropagateIfThrown(self)
+
+        err = self.jvmti[0].GetClassStatus(self.jvmti, cls, &status)
+        if err != 0:
+            raise JniException(err, "Could not get class status")
+
+        if status < 2:
+            raise JniException(0, "Class not prepared yet")
 
         return JvmClassFromJclass(<unsigned long long>cls, self)
 

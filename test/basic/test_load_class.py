@@ -4,16 +4,22 @@ from test.utils.java import compile_java
 
 from pyjvm.jvm import Jvm
 
+import os
+
 
 class TestAttachCreate(TestCase):
 
     def test_load_class(self):
         
-        to_load = "test/java/TestLoadClass.java"
-        class_file = compile_java(to_load)
         jvm = Jvm.aquire()
 
-        with open(class_file, 'rb') as f:
-            TestLoadClass = jvm.loadClass(f)
+        with self.assertRaises(Exception):
+            TestLoadClass = jvm.findClass("test/java/TestLoadClass")
 
-        self.assertEqual(TestLoadClass.__name__, "test.java.TestLoadClass")
+
+        to_load = "test/java/TestLoadClass.java"
+        class_file = compile_java(to_load)
+
+        TestLoadClass = jvm.findClass("test/java/TestLoadClass")
+
+        os.unlink(class_file)

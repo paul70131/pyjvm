@@ -22,7 +22,8 @@ cdef class JvmBoundField:
     cpdef object get(self):
         cdef Jvm jvm = self._object.__class__.jvm
         cdef JNIEnv* env = jvm.jni
-        cdef jclass cid = <jclass><unsigned long long>self._object.__class__._jclass
+       # cdef jclass cid = <jclass><unsigned long long>self._object.__class__._jclass
+        cdef jobject cid = <jobject><unsigned long long>self._object._jobject
         cdef jfieldID fid = self._field._fid
         cdef str signature = self._field._signature
 

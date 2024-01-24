@@ -1,4 +1,4 @@
-from pyjvm.c.jni cimport jclass, jint, JNIEnv, jmethodID, jfieldID, jobject
+from pyjvm.c.jni cimport jclass, jint, JNIEnv, jmethodID, jfieldID, jobject, jvalue
 from pyjvm.jvm cimport Jvm
 from pyjvm.c.jvmti cimport JVMTI_ERROR_NONE, jvmtiEnv
 
@@ -7,8 +7,15 @@ from pyjvm.types.clazz.jvmmethod cimport JvmMethodFromJmethodID, JvmMethod
 from pyjvm.types.object.jvmboundfield cimport JvmBoundField
 from pyjvm.types.object.jvmboundmethod cimport JvmBoundMethod
 
+
 from pyjvm.types.clazz.special.jvmstring cimport JvmString
+from pyjvm.types.clazz.special.jvmenum cimport JvmEnum
 from pyjvm.types.clazz.special.jvmexception import JvmException
+
+from pyjvm.exceptions.exception cimport JvmExceptionPropagateIfThrown
+from pyjvm.types.clazz.jvmmethod cimport JvmMethodReference
+
+from libc.stdlib cimport free
 
 cdef class JvmClass:
 
@@ -16,13 +23,51 @@ cdef class JvmClass:
     def _jobject(self):
         return <unsigned long long>self._jobject
 
-    def __init__(self, unsigned long long _jobject):
-        cdef jclass cid = <jclass>_jobject
+    def from_cid(self, unsigned long long cid):
+        cdef jclass jcid = <jclass>cid
         cdef Jvm jvm = <Jvm>self.__class__.jvm
         cdef JNIEnv* jni = jvm.jni
 
-        self._jobject = jni[0].NewGlobalRef(jni, cid)
-        jni[0].DeleteLocalRef(jni, cid)
+        self._jobject = jni[0].NewGlobalRef(jni, jcid)
+        jni[0].DeleteLocalRef(jni, jcid)
+
+    def __init__(self, *args, unsigned long long cid = 0):
+        cdef jobject ret
+        cdef Jvm jvm = <Jvm>self.__class__.jvm
+        cdef JNIEnv* jni = jvm.jni
+        cdef jclass class_id = <jclass><unsigned long long>self.__class__._jclass
+        cdef JvmMethod constructor
+        cdef jvalue* jargs
+        cdef jmethodID mid
+        cdef JvmMethodReference overload
+
+        if cid != 0:
+            self.from_cid(cid)
+            return
+        
+        constructor = getattr(self, "<init>", None)
+
+        for overload in constructor._overloads:
+            jargs = overload.signature.convert(args, jvm)
+            if jargs == NULL:
+                continue
+
+            _, ret_type = overload.signature.parse()
+
+            mid = overload._method_id
+
+            ret = jni[0].NewObjectA(jni, class_id, mid, jargs)
+            JvmExceptionPropagateIfThrown(jvm)
+            self.from_cid(<unsigned long long>ret)
+
+            free(jargs)
+
+            return
+        
+
+        raise TypeError(f"no constructor found for {self.__class__.__name__} with args {args}", constructor)
+
+
 
     def __del__(self):
         cdef Jvm jvm = <Jvm>self.__class__.jvm
@@ -39,37 +84,42 @@ cdef class JvmClass:
     def __eq__(self, other):
         if isinstance(other, JvmClass):
             return self.equals(other)
-        print("not a jvm class")
         return False
 
     def __getattr__(self, name):
         cls = self.__class__
-        if not cls._loaded:
-            cls.load()
-        
-        attr = cls._fields.get(name, None)
-        if not attr:
-            attr = cls._methods.get(name, None)
+        attr = None
+        while cls and not attr:
+            if not cls._loaded:
+                cls.load()
+            attr = cls._fields.get(name, None)
+            if not attr or attr.static:
+                attr = cls._methods.get(name, None)
+            
+            if attr and attr.static:
+                attr = None
 
-        if not attr:
-            attr = super().__getattribute__(name)
-        
+            cls = cls.__base__ if isinstance(cls.__base__, JvmClassMeta) else None
+
         if not attr or attr.static:
-            raise AttributeError(f"{cls.__name__} has no attribute {name}")
+            raise AttributeError(f"{'t'} has no attribute {name}")
         
         if isinstance(attr, JvmField):
             return JvmBoundField(attr, self).get()
         
         if isinstance(attr, JvmMethod):
+            if attr.name == "<init>":
+                return attr
             return JvmBoundMethod(attr, self)
 
         return attr
 
 
 class JvmClassMeta(type):
-    members = ["_jclass", "signature", "jvm", "_fields", "_methods", "_loaded"]
+    members = ["_jclass", "signature", "jvm", "_fields", "_methods", "_loaded", "_interfaces"]
     _special_ancestors = {
         "java.lang.String": JvmString,
+        "java.lang.Enum": JvmEnum,
     }
 
     def __del__(self):
@@ -86,6 +136,7 @@ class JvmClassMeta(type):
         cls.jvm = attrs['jvm']
         cls._fields = {}
         cls._methods = {}
+        cls._interfaces = attrs['interfaces']
         cls._loaded = False
 
         super().__init__(name, bases, {})
@@ -120,7 +171,7 @@ class JvmClassMeta(type):
             attr = cls._methods.get(name, None)
 
         if not attr:
-            attr = super().__getattribute__(name)
+            attr = getattr(super(), name, None)
 
         if not attr or not attr.static:
             raise AttributeError(f"{cls.__name__} has no attribute {name}")
@@ -209,7 +260,7 @@ cdef object JvmObjectFromJobject(unsigned long long jobj, Jvm jvm):
 
     cid = jni[0].GetObjectClass(jni, <jobject>jobj)
 
-    return JvmClassFromJclass(<unsigned long long>cid, jvm)(jobj)
+    return JvmClassFromJclass(<unsigned long long>cid, jvm)(cid=jobj)
 
 cdef object JvmClassFromJclass(unsigned long long cid, Jvm jvm, object top_base=JvmClass):
     cdef char* name
@@ -219,13 +270,15 @@ cdef object JvmClassFromJclass(unsigned long long cid, Jvm jvm, object top_base=
     cdef jclass superclass
     cdef jclass new_cid
 
-    if cid in jvm.__classes:
-        jni[0].DeleteLocalRef(jni, <jobject>cid)
-        return jvm.__classes[cid]
+    cdef jclass* interfaces
+    cdef jint count
+    
+    py_interfaces = []
 
-    new_cid = jni[0].NewGlobalRef(jni, <jobject>cid)
-    jni[0].DeleteLocalRef(jni, <jobject>cid)
-    cid = <unsigned long long>new_cid
+
+    #if cid in jvm.__classes:
+    #    jni[0].DeleteLocalRef(jni, <jobject>cid)
+    #    return jvm.__classes[cid]
 
     error = jvmti[0].GetClassSignature(jvmti, <jclass>cid, &name, NULL)
     if error != JVMTI_ERROR_NONE:
@@ -234,19 +287,47 @@ cdef object JvmClassFromJclass(unsigned long long cid, Jvm jvm, object top_base=
     py_signature = name.decode('utf-8')
     py_name = py_signature[1:-1].replace('/', '.')
 
-    superclass = jni[0].GetSuperclass(jni, <jclass>cid)
+    error = jvmti[0].Deallocate(jvmti, <unsigned char*>name)
+    if error != JVMTI_ERROR_NONE:
+        raise Exception("error deallocating class signature", <int>error)
+
+    if py_name in jvm.__classes:
+        jni[0].DeleteLocalRef(jni, <jobject>cid)
+        return jvm.__classes[py_name]
+
+
+    new_cid = jni[0].NewGlobalRef(jni, <jobject>cid)
+    jni[0].DeleteLocalRef(jni, <jobject>cid)
+    cid = <unsigned long long>new_cid
+
+
+    error = jvmti[0].GetImplementedInterfaces(jvmti, new_cid, &count, &interfaces)
+    if error != JVMTI_ERROR_NONE:
+        raise Exception("error getting class interfaces", <int>error)
+
+    
+    for i in range(count):
+        interface = JvmClassFromJclass(<unsigned long long>interfaces[i], jvm)
+        py_interfaces.append(interface) 
+
+    error = jvmti[0].Deallocate(jvmti, <unsigned char*>interfaces)
+    if error != JVMTI_ERROR_NONE:
+        raise Exception("error deallocating class interfaces", <int>error)
+    
+
+    superclass = jni[0].GetSuperclass(jni, new_cid)
     bases = (top_base,)
     if superclass != NULL:
         top_base = JvmClassMeta._special_ancestors.get(py_name, JvmClass)
         base = JvmClassFromJclass(<unsigned long long>superclass, jvm, top_base=top_base)
         bases = (base,)
+    
 
-    error = jvmti[0].Deallocate(jvmti, <unsigned char*>name)
-    if error != JVMTI_ERROR_NONE:
-        raise Exception("error deallocating class signature", <int>error)
-
-    c = JvmClassMeta(py_name, bases, {'_jclass': <unsigned long long>cid, 'signature': py_signature, 'jvm': jvm})
+    c = JvmClassMeta(py_name, bases, {'_jclass':cid, 'signature': py_signature, 'jvm': jvm, 'interfaces' : py_interfaces})
     jvm.__classes[cid] = c
+
+
+
     return c
 
 

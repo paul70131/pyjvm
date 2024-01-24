@@ -11,17 +11,21 @@ from pyjvm.types.clazz.jvmclass cimport JvmClass, JvmObjectFromJobject
 cdef class JvmString(JvmClass):
 
 
-    def __init__(self, data):
+    def __init__(self, *args, **kwargs):
         cdef jobject _jobject
         cdef Jvm jvm = self.__class__.jvm
         cdef JNIEnv* jni = jvm.jni
+
+        data = args[0] if args else None
+
         if isinstance(data, str):
             _jobject = jni[0].NewStringUTF(jni, data.encode("utf-8"))
             JvmExceptionPropagateIfThrown(jvm)
 
             data = <unsigned long long>_jobject
-            
-        super().__init__(data)
+            super().__init__(cid=data)
+        else:
+            super().__init__(*args, **kwargs)
     
 
     def __len__(self):
@@ -40,12 +44,10 @@ cdef class JvmString(JvmClass):
         return self.__get_data()
 
     def __eq__(self, other):
-        if isinstance(other, JvmString):
-            return self.equals(other)
-        elif isinstance(other, str):
+        if isinstance(other, str):
             return self.__get_data() == other
         else:
-            return False
+            super().__eq__(other)
     
     cdef str __get_data(self):
         cdef Jvm jvm = self.__class__.jvm

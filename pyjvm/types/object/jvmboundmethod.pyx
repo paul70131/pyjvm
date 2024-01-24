@@ -61,7 +61,7 @@ cdef class JvmBoundMethod:
         cdef jboolean ret
         ret = jni[0].CallBooleanMethodA(jni, obj, method_id, args)
         JvmExceptionPropagateIfThrown(jvm)
-        return <bint>ret
+        return ret != 0
 
     cdef object call_byte(self, JNIEnv* jni, jobject obj, jmethodID method_id, jvalue* args, Jvm jvm):
         cdef jbyte ret
@@ -119,8 +119,6 @@ cdef class JvmBoundMethod:
         cdef jobject cid = <jobject><unsigned long long>self.obj._jobject
         cdef object value
 
-        print("Calling", self.name, return_type, self.obj)
-
         if return_type == JvmSignature.VOID:
             return self.call_void(env, cid, mid, args, jvm)
         if return_type == JvmSignature.BOOLEAN:
@@ -151,7 +149,7 @@ cdef class JvmBoundMethod:
 
         for overload in self.method._overloads:
 
-            jargs = overload.signature.convert(args)
+            jargs = overload.signature.convert(args, jvm)
             if jargs == NULL:
                 continue
 
@@ -164,6 +162,7 @@ cdef class JvmBoundMethod:
         
             return ret
 
+        raise TypeError("No overload found for method " + self.method.name + " with signature " + str(self.method.signature) + " and arguments " + str(args))
         
 
     def __repr__(self):

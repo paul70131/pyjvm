@@ -50,20 +50,25 @@ cdef class JvmMethodSignature:
         
         return (args, ret)
 
-    cdef jvalue* convert(self, tuple args):
+    cdef jvalue* convert(self, tuple args, Jvm jvm):
         cdef str f_ret
         cdef list f_args
         cdef jvalue* jargs
 
         f_args, f_ret = self.parse()
+
         if len(f_args) != len(args):
             raise Exception("Invalid number of arguments")
         
         jargs = <jvalue*>malloc(sizeof(jvalue) * len(args))
+                
+        if len(args) == 0:
+            return jargs
+
         for i in range(len(args)):
             try:
-                jargs[i] = convert_to_java(f_args[i], args[i])
-            except Exception as e:
+                jargs[i] = convert_to_java(f_args[i], args[i], jvm)
+            except ValueError as e:
                 free(jargs)
                 return NULL
         
@@ -215,7 +220,7 @@ cdef class JvmMethod:
 
         for overload in self._overloads:
 
-            jargs = overload.signature.convert(args)
+            jargs = overload.signature.convert(args, jvm)
             if jargs == NULL:
                 continue
 
@@ -228,7 +233,9 @@ cdef class JvmMethod:
         
             return ret
 
+        raise TypeError("No overload found for method " + self.name + " with signature " + str(self.signature) + " and arguments " + str(args))
         
+
 
     def __repr__(self):
         name = ""

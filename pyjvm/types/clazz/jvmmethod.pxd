@@ -6,7 +6,7 @@ cdef class JvmMethodSignature:
     cdef str _signature
 
     cdef tuple parse(self)
-    cdef jvalue* convert(self, tuple args)
+    cdef jvalue* convert(self, tuple args, Jvm jvm)
 
 cdef class JvmMethodReference:
     cdef jmethodID _method_id

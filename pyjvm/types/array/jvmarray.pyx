@@ -1,4 +1,4 @@
-from pyjvm.c.jni cimport jarray, JNIEnv, jsize, jint, jboolean, jchar, jshort, jlong, jfloat, jdouble, jbyte, JNI_ABORT
+from pyjvm.c.jni cimport jarray, JNIEnv, jsize, jint, jboolean, jchar, jshort, jlong, jfloat, jdouble, jbyte, JNI_ABORT, jobject
 from pyjvm.jvm cimport Jvm
 
 from libc.stdlib cimport malloc, free 
@@ -6,6 +6,8 @@ from libc.stdlib cimport malloc, free
 from pyjvm.exceptions.exception cimport JvmExceptionPropagateIfThrown
 
 from pyjvm.types.signature import JvmSignature
+from pyjvm.types.clazz.jvmclass cimport JvmObjectFromJobject
+from pyjvm.types.converter.typeconverter cimport convert_to_bool, convert_to_byte, convert_to_char, convert_to_short, convert_to_int, convert_to_long, convert_to_float, convert_to_double, convert_to_object
 
 cdef object CreateJvmArray(Jvm jvm, jarray jarray, str signature):
     if signature[1] == JvmSignature.CLASS:
@@ -37,6 +39,9 @@ cdef class JvmArray:
         JvmExceptionPropagateIfThrown(self.jvm)
         return <int>length
 
+    def __str__(self):
+        return f"JvmArray {self.signature} with length {self.length()}"
+
     @property
     def signature(self):
         return self.signature
@@ -56,7 +61,13 @@ cdef class JvmArray:
             self.current_index += 1
             return self[self.current_index - 1]
 
+    def __setitem__(self, key, value):
+        if not isinstance(key, int):
+            raise TypeError("Invalid key type for JvmArray: {}".format(type(key)))
+        
+        self.set(key, value)
     
+
     def __getitem__(self, key):
         if isinstance(key, slice):
             start = key.start if key.start is not None else 0
@@ -67,7 +78,7 @@ cdef class JvmArray:
         if isinstance(key, int):
             return self.get(key, 1)[0]
         else:
-            raise TypeError("Invalid key type for JvmPrimitiveArray: {}".format(type(key)))
+            raise TypeError("Invalid key type for JvmArray: {}".format(type(key)))
 
     def to_list(self):
         return list(self.get(0, self.length()))
@@ -84,14 +95,94 @@ cdef class JvmArray:
     
     cdef tuple get(self, int start, int length):
         raise NotImplementedError("Abstract method")
+    
+    cdef void set(self, int offset, object value) except *:
+        raise NotImplementedError("Abstract method")
 
     
 
 cdef class JvmObjectArray(JvmArray):
-    pass
+    
+    # since with object arrays there is only getSingleElement, we need to iterately call it
+    cdef tuple get(self, int start, int length):
+        cdef JNIEnv* jni = self.jvm.jni
+        cdef jobject* data = <jobject*>malloc(length * sizeof(jobject))
+        
+        for i in range(length):
+            data[i] = jni[0].GetObjectArrayElement(jni, self._jarray, start + i)
+            JvmExceptionPropagateIfThrown(self.jvm)
+        
+        return tuple(JvmObjectFromJobject(<unsigned long long>data[i], self.jvm) for i in range(length))
+
+    cdef void set(self, int offset, object value) except *:
+        cdef JNIEnv* jni = self.jvm.jni
+        cdef jobject data = convert_to_object(value, self.jvm)
+        jni[0].SetObjectArrayElement(jni, self._jarray, offset, data)
+        JvmExceptionPropagateIfThrown(self.jvm)
 
 
 cdef class JvmPrimitiveArray(JvmArray):
+
+    cdef void set(self, int offset, object value) except *:
+        if self.signature[1] == JvmSignature.BOOLEAN:
+            self.set_bool(self.jvm.jni, self._jarray, offset, value, self.jvm)
+        elif self.signature[1] == JvmSignature.BYTE:
+            self.set_byte(self.jvm.jni, self._jarray, offset, value, self.jvm)
+        elif self.signature[1] == JvmSignature.CHAR:
+            self.set_char(self.jvm.jni, self._jarray, offset, value, self.jvm)
+        elif self.signature[1] == JvmSignature.SHORT:
+            self.set_short(self.jvm.jni, self._jarray, offset, value, self.jvm)
+        elif self.signature[1] == JvmSignature.INT:
+            self.set_int(self.jvm.jni, self._jarray, offset, value, self.jvm)
+        elif self.signature[1] == JvmSignature.LONG:
+            self.set_long(self.jvm.jni, self._jarray, offset, value, self.jvm)
+        elif self.signature[1] == JvmSignature.FLOAT:
+            self.set_float(self.jvm.jni, self._jarray, offset, value, self.jvm)
+        elif self.signature[1] == JvmSignature.DOUBLE:
+            self.set_double(self.jvm.jni, self._jarray, offset, value, self.jvm)
+        else:
+            raise NotImplementedError("Primitive array type {} not supported".format(self._signature[1]))
+
+
+    cdef void set_bool(self, JNIEnv* env, jarray array, int index, object value, Jvm jvm) except *:
+        cdef jboolean data = convert_to_bool(value)
+        env[0].SetBooleanArrayRegion(env, array, index, 1, &data)
+        JvmExceptionPropagateIfThrown(self.jvm)
+
+    cdef void set_byte(self, JNIEnv* env, jarray array, int index, object value, Jvm jvm) except *:
+        cdef jbyte data = convert_to_byte(value)
+        env[0].SetByteArrayRegion(env, array, index, 1, &data)
+        JvmExceptionPropagateIfThrown(self.jvm)
+
+    cdef void set_char(self, JNIEnv* env, jarray array, int index,object value, Jvm jvm) except *:
+        cdef jchar data = convert_to_char(value)
+        env[0].SetCharArrayRegion(env, array, index, 1, &data)
+        JvmExceptionPropagateIfThrown(self.jvm)
+
+    cdef void set_short(self, JNIEnv* env, jarray array, int index,object value, Jvm jvm) except *:
+        cdef jshort data = convert_to_short(value)
+        env[0].SetShortArrayRegion(env, array, index, 1, &data)
+        JvmExceptionPropagateIfThrown(self.jvm)
+
+    cdef void set_int(self, JNIEnv* env, jarray array, int index,object value, Jvm jvm) except *:
+        cdef jint data = convert_to_int(value)
+        env[0].SetIntArrayRegion(env, array, index, 1, &data)
+        JvmExceptionPropagateIfThrown(self.jvm)
+
+    cdef void set_long(self, JNIEnv* env, jarray array, int index,object value, Jvm jvm) except *:
+        cdef jlong data = convert_to_long(value)
+        env[0].SetLongArrayRegion(env, array, index, 1, &data)
+        JvmExceptionPropagateIfThrown(self.jvm)
+
+    cdef void set_float(self, JNIEnv* env, jarray array, int index,object value, Jvm jvm) except *:
+        cdef jfloat data = convert_to_float(value)
+        env[0].SetFloatArrayRegion(env, array, index, 1, &data)
+        JvmExceptionPropagateIfThrown(self.jvm)
+
+    cdef void set_double(self, JNIEnv* env, jarray array, int index,object value, Jvm jvm) except *:
+        cdef jdouble data = convert_to_double(value)
+        env[0].SetDoubleArrayRegion(env, array, index, 1, &data)
+        JvmExceptionPropagateIfThrown(self.jvm)
 
 
     cdef tuple get(self, int start, int length):

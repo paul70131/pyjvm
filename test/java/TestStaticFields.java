@@ -2,6 +2,8 @@ package test.java;
 
 
 public class TestStaticFields {
+    public int number;
+    
     public static boolean bool_field = true;
     public static byte byte_field = 1;
     public static char char_field = 'a';
@@ -12,6 +14,7 @@ public class TestStaticFields {
     public static double double_field = 6.0;
     public static Object object_field = new Object();
     public static String string_field = "Hello World!";
+    public static String string_field2 = "Bye World!";
 
     public static boolean[] bool_array_field = {true, false, true};
     public static byte[] byte_array_field = {1, 2, 3};
@@ -23,5 +26,20 @@ public class TestStaticFields {
     public static double[] double_array_field = {1.0, 2.0, 3.0};
     
     public static String[] string_array_field = {"Hello", "World", "!"};
-    public static Object[] object_array_field = {new Object(), new Object(), new Object()};
+    public static TestStaticFields[] object_array_field = {new TestStaticFields(1), new TestStaticFields(2), new TestStaticFields(3)};
+
+    @Override
+    public boolean equals(Object o) {
+        return true;
+    }
+
+    public TestStaticFields(int number) {
+        this.number = number;
+    }
+
+
+    public static int with_object_arg(TestStaticFields o) {
+        return o.number;
+    }
+
 }

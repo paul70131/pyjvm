@@ -8,6 +8,13 @@ cdef extern from "jvmti.h":
 
     cdef int JVMTI_VERSION_1_2 = 0x30010200
 
+    ctypedef enum jvmtiPhase:
+        JVMTI_PHASE_ONLOAD = 1,
+        JVMTI_PHASE_PRIMORDIAL = 2,
+        JVMTI_PHASE_START = 6,
+        JVMTI_PHASE_LIVE = 4,
+        JVMTI_PHASE_DEAD = 8
+
     ctypedef enum jvmtiError:
         JVMTI_ERROR_NONE = 0,
         JVMTI_ERROR_INVALID_THREAD = 10,
@@ -78,3 +85,7 @@ cdef extern from "jvmti.h":
         jvmtiError (*GetFieldModifiers) (jvmtiEnv* env, jclass klass, jfieldID field, jint* modifiers_ptr)
 
         jvmtiError (*Deallocate) (jvmtiEnv* env, unsigned char* mem)
+        jvmtiError (*GetImplementedInterfaces) (jvmtiEnv* env, jclass klass, jint* interface_count_ptr, jclass** interfaces_ptr)
+        jvmtiError (*GetClassStatus) (jvmtiEnv* env, jclass klass, jint* status_ptr)
+
+        jvmtiError (*GetPhase) (jvmtiEnv* env, jvmtiPhase* phase_ptr)

@@ -105,8 +105,13 @@ class TestStaticFields(TestCase):
         test_class = self.get_test_class(jvm)
 
         self.assertEqual(test_class.string_field, "Hello World!")
-        test_class.string_field = "Bye World!"
+        self.assertEqual(test_class.string_field2, "Bye World!")
+
+        test_class.string_field = test_class.string_field2
         self.assertEqual(test_class.string_field, "Bye World!")
+
+        test_class.string_field = "New String"
+        self.assertEqual(test_class.string_field, "New String")
 
         test_class.string_field = "Hello World!"
 
@@ -117,3 +122,19 @@ class TestStaticFields(TestCase):
         self.assertEqual(len(test_class.int_array_field), 3)
         self.assertEqual(test_class.int_array_field.signature, "[I")
         self.assertEqual(test_class.int_array_field[0], 1)
+        self.assertEqual(test_class.int_array_field, [1, 2, 3])
+
+    
+    def test_call_with_object_arg(self):
+        jvm = Jvm.aquire()
+        test_class = self.get_test_class(jvm)
+
+        obj = test_class(2)
+        r = test_class.with_object_arg(obj)
+        self.assertEqual(r, 2)
+    
+        jlo = jvm.findClass("java/lang/String")
+        obj = jlo("TEST")
+
+        with self.assertRaises(TypeError):
+            r = test_class.with_object_arg(obj)

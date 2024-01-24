@@ -62,6 +62,11 @@ extensions = [
         include_dirs=["./pyjvm", "./pyjvm/c/headers"],
     ),
     Extension(
+        'pyjvm.types.clazz.special.jvmenum',
+        ['pyjvm/types/clazz/special/jvmenum.pyx'],
+        include_dirs=["./pyjvm", "./pyjvm/c/headers"],
+    ),
+    Extension(
         'pyjvm.types.clazz.special.jvmexception',
         ['pyjvm/types/clazz/special/jvmexception.pyx'],
         include_dirs=["./pyjvm", "./pyjvm/c/headers"],
