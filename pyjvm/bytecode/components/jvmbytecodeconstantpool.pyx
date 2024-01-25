@@ -44,7 +44,50 @@ cdef class JvmBytecodeConstantPool(JvmBytecodeComponent):
 
         raise Exception("Class not found in constant pool: %s" % py_class)
 
-        
+
+    cdef JvmBytecodeConstantPoolEntry find_long(self, long py_long) except *:
+        cdef JvmBytecodeConstantPoolEntry entry
+        cdef JBCPE_Long long_entry
+
+        for entry in self.constant_pool:
+            if entry.tag == 5:
+                long_entry = <JBCPE_Long>entry
+
+                if long == py_long:
+                    return entry
+
+    cdef JvmBytecodeConstantPoolEntry find_float(self, float py_float) except *:
+        cdef JvmBytecodeConstantPoolEntry entry
+        cdef JBCPE_Float float_entry
+
+        for entry in self.constant_pool:
+            if entry.tag == 4:
+                float_entry = <JBCPE_Float>entry
+
+                if float_entry.bytes == py_float:
+                    return entry
+
+    cdef JvmBytecodeConstantPoolEntry find_double(self, double py_double) except *:
+        cdef JvmBytecodeConstantPoolEntry entry
+        cdef JBCPE_Double double_entry
+
+        for entry in self.constant_pool:
+            if entry.tag == 6:
+                double_entry = <JBCPE_Double>entry
+
+                if double_entry.bytes == py_double:
+                    return entry
+
+    cdef JvmBytecodeConstantPoolEntry find_integer(self, int py_integer) except *:
+        cdef JvmBytecodeConstantPoolEntry entry
+        cdef JBCPE_Integer integer_entry
+
+        for entry in self.constant_pool:
+            if entry.tag == 3:
+                integer_entry = <JBCPE_Integer>entry
+
+                if integer_entry.bytes == py_integer:
+                    return entry
 
     cdef JvmBytecodeConstantPoolEntry find_string(self, str py_string) except *:
         cdef JvmBytecodeConstantPoolEntry entry

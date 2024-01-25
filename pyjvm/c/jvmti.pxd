@@ -135,5 +135,6 @@ cdef extern from "jvmti.h":
         jvmtiError (*GetConstantPool) (jvmtiEnv* env, jclass klass, jint* constant_pool_count_ptr, jint* constant_pool_byte_count_ptr, unsigned char** constant_pool_bytes_ptr)
         jvmtiError (*GetClassVersionNumbers) (jvmtiEnv* env, jclass klass, jint* version_ptr, jint* sub_version_ptr)
         jvmtiError (*GetClassModifiers) (jvmtiEnv* env, jclass klass, jint* modifiers_ptr)
+        jvmtiError (*GetClassLoader)(jvmtiEnv* env, jclass klass, jobject* classloader_ptr)
 
         jvmtiError (*AddCapabilities) (jvmtiEnv* env, jvmtiCapabilities* capabilities_ptr)

@@ -19,13 +19,29 @@ cdef class JvmBytecodeClass:
         self.parse_interfaces()
         self.parse_fields()
 
+        self.parse_methods()
+        self.parse_attributes()
+
+    def parse_attributes(self):
+        self.attributes = JvmBytecodeAttributes()
+
+        #  TODO: InnerClasses
+        # ?
+
+        
+        
+
+    def parse_methods(self):
+        self.methods = JvmBytecodeMethods()
+        for method in self.klass.getMethods(inherited=False).values():
+            self.methods.add(method, self.klass, self.klass.jvm, self.constant_pool)
+
 
     def parse_fields(self):
-        cdef jclass cls = <jclass><unsigned long long>self.klass._jclass
 
         self.fields = JvmBytecodeFields()
         for field in self.klass.getFields(inherited=False).values():
-            self.fields.add(field, self.klass.jvm, jclass, self.constant_pool)
+            self.fields.add(field, self.klass, self.klass.jvm, self.constant_pool)
 
     def parse_methods(self):
         self.methods = JvmBytecodeMethods()

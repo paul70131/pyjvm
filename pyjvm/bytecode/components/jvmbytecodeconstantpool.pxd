@@ -14,6 +14,10 @@ cdef class JvmBytecodeConstantPool(JvmBytecodeComponent):
 
     cdef JvmBytecodeConstantPoolEntry find_string(self, str py_string) except *
     cdef JvmBytecodeConstantPoolEntry find_class(self, str py_class) except *
+    cdef JvmBytecodeConstantPoolEntry find_long(self, long py_long) except *
+    cdef JvmBytecodeConstantPoolEntry find_float(self, float py_float) except *
+    cdef JvmBytecodeConstantPoolEntry find_double(self, double py_double) except *
+    cdef JvmBytecodeConstantPoolEntry find_integer(self, int py_integer) except *
     
     
 

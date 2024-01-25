@@ -1,6 +1,6 @@
 from pyjvm.c.jni cimport jclass, jint, JNIEnv, jmethodID, jfieldID, jobject, jvalue
 from pyjvm.jvm cimport Jvm
-from pyjvm.c.jvmti cimport JVMTI_ERROR_NONE, jvmtiEnv
+from pyjvm.c.jvmti cimport JVMTI_ERROR_NONE, jvmtiEnv, jvmtiError
 
 from pyjvm.types.clazz.jvmfield cimport JvmFieldFromJfieldID, JvmField
 from pyjvm.types.clazz.jvmmethod cimport JvmMethodFromJmethodID, JvmMethod
@@ -92,6 +92,12 @@ cdef class JvmClass:
             return self.equals(other)
         return False
 
+    def __dir__(self):
+        if not self.__class__._loaded:
+            self.__class__.load()
+        members = {**self.__class__._fields, **self.__class__._methods}
+        return [m.name for m in members.values() if not m.static]
+
     def __getattr__(self, name):
         cls = self.__class__
         attr = None
@@ -139,11 +145,29 @@ class JvmClassMeta(type):
     def is_java(cls):
         return True
 
+    def getClassLoader(self):
+        cdef Jvm jvm = <Jvm>self.jvm
+        cdef jvmtiEnv* jvmti = jvm.jvmti
+        cdef jclass class_id = <jclass><unsigned long long>self._jclass
+        cdef jobject loader
+        cdef jvmtiError err = jvmti[0].GetClassLoader(jvmti, class_id, &loader)
+        if err != JVMTI_ERROR_NONE:
+            raise Exception("error getting class loader", <int>err)
+
+        return JvmObjectFromJobject(<unsigned long long>loader, jvm)
+
     def __inherit(cls, name, bases, attrs):
         if not isinstance(bases[0], JvmClassMeta):
             raise TypeError("cannot inherit from non-JvmClass")
         
         bytecodeBase = JvmBytecodeClass(bases[0])
+
+    def __dir__(cls):
+        if not cls._loaded:
+            cls.load()
+        members = {**cls._fields, **cls._methods}
+        return [m.name for m in members.values() if m.static]
+
     
     def __init__(cls, name, bases, attrs):
         if '_jclass' not in attrs:

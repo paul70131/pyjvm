@@ -2,7 +2,7 @@ from pyjvm.types.clazz.jvmclass cimport JvmClass
 from pyjvm.jvm cimport Jvm
 from pyjvm.types.clazz.jvmclass cimport JvmClassFromJclass, JvmObjectFromJobject
 
-from pyjvm.c.jni cimport jfieldID, jint, jclass, jmethodID, jvalue, jboolean, jbyte, jchar, jshort, jint, jlong, jfloat, jdouble, jobject, JNIEnv
+from pyjvm.c.jni cimport jfieldID, jint, jclass, jmethodID, jvalue, jboolean, jbyte, jchar, jshort, jint, jlong, jfloat, jdouble, jobject, JNIEnv, jarray
 from pyjvm.c.jvmti cimport jvmtiEnv
 from libc.stdlib cimport malloc, free
 
@@ -10,6 +10,9 @@ from pyjvm.types.converter.typeconverter cimport convert_to_java
 from pyjvm.types.signature import JvmSignature
 from pyjvm.exceptions.exception cimport JvmExceptionPropagateIfThrown
 from pyjvm.types.clazz.jvmmethod cimport JvmMethod, JvmMethodReference
+
+
+from pyjvm.types.array.jvmarray cimport JvmArray, CreateJvmArray
 
 
 cdef class JvmBoundMethod:
@@ -113,6 +116,12 @@ cdef class JvmBoundMethod:
         
         return JvmObjectFromJobject(<unsigned long long> ret, jvm)
 
+    cdef object call_array(self, JNIEnv* jni, jobject obj, jmethodID method_id, jvalue* args, Jvm jvm, str signature):
+        cdef jarray value
+        value = jni[0].CallObjectMethodA(jni, obj, method_id, args)
+        JvmExceptionPropagateIfThrown(jvm)
+        return CreateJvmArray(jvm, value, signature)
+
     cdef object call(self, jmethodID mid,  jvalue* args, str return_type):
         cdef Jvm jvm = self.obj.__class__.jvm
         cdef JNIEnv* env = jvm.jni
@@ -137,8 +146,12 @@ cdef class JvmBoundMethod:
             return self.call_long(env, cid, mid, args, jvm)
         elif return_type == JvmSignature.SHORT:
             return self.call_short(env, cid, mid, args, jvm)
-        else:
+        elif return_type[0] == JvmSignature.CLASS:
             return self.call_object(env, cid, mid, args, jvm)
+        elif return_type[0] == JvmSignature.ARRAY:
+            return self.call_array(env, cid, mid, args, jvm, return_type)
+        
+        raise TypeError("Unknown return type " + return_type)
 
 
     def __call__(self, *args):

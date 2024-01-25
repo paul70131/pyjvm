@@ -27,10 +27,16 @@ cdef class JvmArray:
 
 
     def __init__(self, unsigned long long arr, str signature, Jvm jvm):
-        self._jarray = <jarray>arr
+        cdef jobject noid = jvm.jni[0].NewGlobalRef(jvm.jni, <jobject>arr)
+        jvm.jni[0].DeleteLocalRef(jvm.jni, <jobject>arr)
+
+        self._jarray = noid
         self.signature = signature
         self.jvm = jvm
         self.current_index = 0
+    
+    def __dealloc__(self):
+        self.jvm.jni[0].DeleteGlobalRef(self.jvm.jni, self._jarray)
 
 
     cdef length(self):

@@ -20,3 +20,4 @@ cdef class JvmBoundMethod:
     cdef object call_float(self, JNIEnv* jni, jobject obj, jmethodID method_id, jvalue* args, Jvm jvm)
     cdef object call_double(self, JNIEnv* jni, jobject obj, jmethodID method_id, jvalue* args, Jvm jvm)
     cdef object call_object(self, JNIEnv* jni, jobject obj, jmethodID method_id, jvalue* args, Jvm jvm)
+    cdef object call_array(self, JNIEnv* jni, jobject obj, jmethodID method_id, jvalue* args, Jvm jvm, str signature)

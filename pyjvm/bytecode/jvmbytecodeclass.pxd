@@ -1,6 +1,6 @@
 from pyjvm.bytecode.components.jvmbytecodeattributes cimport JvmBytecodeAttributes
 from pyjvm.bytecode.components.jvmbytecodeconstantpool cimport JvmBytecodeConstantPool
-from pyjvm.bytecode.components.jvmbytecodefields cimport JvmBytecodeFields
+from pyjvm.bytecode.components.jvmbytecodefields cimport JvmBytecodeFields, JvmBytecodeField
 from pyjvm.bytecode.components.jvmbytecodeinterfaces cimport JvmBytecodeInterfaces
 from pyjvm.bytecode.components.jvmbytecodemethods cimport JvmBytecodeMethods
 

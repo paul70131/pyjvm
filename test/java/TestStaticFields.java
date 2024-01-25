@@ -2,11 +2,13 @@ package test.java;
 
 import java.lang.annotation.*;
 
+import test.java.TestFieldAnnotation;
+
 
 public class TestStaticFields {
     public int number;
     
-    @Retention(RetentionPolicy.RUNTIME)
+    @TestFieldAnnotation
     public static boolean bool_field = true;
 
     public static byte byte_field = 1;
