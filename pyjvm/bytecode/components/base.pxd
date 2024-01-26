@@ -1,6 +1,7 @@
 
 
 cdef class JvmBytecodeComponent():
-    cdef unsigned char* buffer
 
-    cdef unsigned char* render(self) except *
+    cdef int render(self, unsigned char* buffer) except -1
+
+    cdef unsigned int size(self) except 0

@@ -160,7 +160,14 @@ class JvmClassMeta(type):
         if not isinstance(bases[0], JvmClassMeta):
             raise TypeError("cannot inherit from non-JvmClass")
         
-        bytecodeBase = JvmBytecodeClass(bases[0])
+        package = attrs.get("package", None)
+        fullname = f"{package}.{name}" if package else name
+
+        
+        
+        bytecodeClass = JvmBytecodeClass.inherit(bases[0], fullname, attrs)
+        bytecodeClass.insert(bases[0].jvm, bases[0].getClassLoader())
+
 
     def __dir__(cls):
         if not cls._loaded:

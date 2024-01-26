@@ -1,5 +1,5 @@
 from pyjvm.jvm cimport Jvm
-from pyjvm.bytecode.components.jvmbytecodeconstantpool cimport JvmBytecodeConstantPool
+from pyjvm.bytecode.components.jvmbytecodeconstantpool cimport JvmBytecodeConstantPool, JvmBytecodeConstantPoolEntry
 from pyjvm.types.clazz.jvmfield cimport JvmField
 from pyjvm.bytecode.components.jvmbytecodeattributes cimport JvmBytecodeAttributes
 from pyjvm.c.jni cimport JNIEnv, jobject, jclass
@@ -18,4 +18,5 @@ cdef class JvmBytecodeField:
 cdef class JvmBytecodeFields(JvmBytecodeComponent):
     cdef list[JvmBytecodeField] fields
 
-    cdef void add(self, JvmField field, object klass, Jvm jvm, JvmBytecodeConstantPool cp) except *
+    cdef void add(self, JvmBytecodeField bc_field) except *
+    cdef JvmBytecodeField add_new(self, JvmBytecodeConstantPool cp, str name, str signature, bint static, bint public = ?, object default = ?) except *

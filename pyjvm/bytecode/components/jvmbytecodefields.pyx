@@ -19,38 +19,66 @@ cdef class JvmBytecodeFields(JvmBytecodeComponent):
     def __init__(self):
         self.fields = []
 
-    cdef void add(self, JvmField field, object klass, Jvm jvm, JvmBytecodeConstantPool cp) except *:
-        cdef jobject field_ref
-        cdef jclass cid = <jclass><unsigned long long>klass._jclass
-        cdef JvmBytecodeField bc_field
+    cdef int render(self, unsigned char* buffer) except -1:
+        cdef unsigned int offset = 0
+        cdef unsigned int fields_count = len(self.fields)
+        cdef JvmBytecodeField field
 
-        name_index = cp.find_string(field._name).offset
-        descriptor_index = cp.find_string(field._signature).offset
+        buffer[offset] = (fields_count >> 8) & 0xFF
+        buffer[offset + 1] = fields_count & 0xFF
+        offset += 2
 
+        for field in self.fields:
+            buffer[offset] = (field.access_flags >> 8) & 0xFF
+            buffer[offset + 1] = field.access_flags & 0xFF
+            buffer[offset + 2] = (field.name_index >> 8) & 0xFF
+            buffer[offset + 3] = field.name_index & 0xFF
+            buffer[offset + 4] = (field.descriptor_index >> 8) & 0xFF
+            buffer[offset + 5] = field.descriptor_index & 0xFF
+            offset += 6
 
-        bc_field = JvmBytecodeField(field._modifiers, name_index, descriptor_index)
-        self.fields.append(bc_field)
+            offset += field.attributes.render(buffer + offset)
 
+        return offset
+
+    cdef unsigned int size(self) except 0:
+        cdef unsigned int size = 2 # fields_count
+        cdef JvmBytecodeField field
+
+        for field in self.fields:
+            size += 2  # access_flags
+            size += 2  # name_index
+            size += 2  # descriptor_index
+            size += field.attributes.size()
+
+        return size
+
+    cdef JvmBytecodeField add_new(self, JvmBytecodeConstantPool cp, str name, str signature, bint static, bint public = True, object default = None) except *:
+        cdef unsigned short access_flags = 0
+        cdef JvmBytecodeConstantPoolEntry name_entry
+        cdef JvmBytecodeConstantPoolEntry descriptor_entry
+        cdef JvmBytecodeField field
+
+        if public:
+            access_flags |= 0x0001  # Set the public flag
+
+        if static:
+            access_flags |= 0x0008  # Set the static flag
+
+        name_entry = cp.find_string(name, True)
+        descriptor_entry = cp.find_string(signature, True)
+
+        field = JvmBytecodeField(access_flags, name_entry.offset, descriptor_entry.offset)
+        self.add(field)
+
+        if default:
+            attr = ConstantValueAttribute(signature, default, cp)
+            field.attributes.add(attr)
+    
         
-        field_ref = jvm.jni[0].ToReflectedField(jvm.jni, cid, field._fid, <bint>field.static)
-        obj = JvmObjectFromJobject(<unsigned long long>field_ref, jvm)
 
-        # now handle the attributes, since we do not have direct access to them, we need to figure 
-        
-        if field.static and getattr(klass, field.name) and field.signature in ConstantValueAttribute.signatures:
-            cv = ConstantValueAttribute(field, getattr(klass, field.name), cp)
-            bc_field.attributes.add(cv)
-            
-        # TODO: this may not be the inital value?
+    cdef void add(self, JvmBytecodeField bc_field) except *:
+        self.fields.append(bc_field)    
 
-        # TODO: Synthetic ?
-
-        # TODO: Deprecated ? (doesnt seem important)
-
-        # TODO: RuntimeVisibleAnnotations ?
-
-        annotations = obj.getDeclaredAnnotations()
-        for annotation in annotations:
-            pass
 
 

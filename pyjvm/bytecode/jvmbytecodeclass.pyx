@@ -2,86 +2,101 @@
 from pyjvm.c.jni cimport jclass, JNIEnv, jint
 from pyjvm.c.jvmti cimport jvmtiEnv, jvmtiError
 from pyjvm.jvm cimport Jvm
+from libc.stdlib cimport free, malloc
 
 from pyjvm.exceptions.exception import JvmtiException
+from pyjvm.bytecode.annotations import JvmTypeAnnotation
+from pyjvm.bytecode.components.jvmbytecodeattributes cimport ConstantValueAttribute
 
 cdef class JvmBytecodeClass:
     #cdef object klass
 
-    def __init__(self, object klass):
-        self.klass = klass
+    def __init__(self):
+        pass
+        #self.klass = klass
 
-        self.parse_version()
-        self.parse_cp()
-        self.parse_version()
-        self.parse_this_super()
+        #self.parse_version()
+        #self.parse_cp()
+        #self.parse_version()
+        #self.parse_this_super()
         # interfaces are not supported yet
-        self.parse_interfaces()
-        self.parse_fields()
+        #self.parse_interfaces()
+        #self.parse_fields()
 
-        self.parse_methods()
-        self.parse_attributes()
+        #self.parse_methods()
+        #self.parse_attributes()
 
-    def parse_attributes(self):
+    @staticmethod
+    def inherit(object klass, str name, attrs):
+
+        cf = JvmBytecodeClass()
+
+        cf.inherit_version(klass)
+        cf.inherit_cp(klass)
+        cf.inherit_access_flags(klass)
+        cf.inherit_this_super(klass, name)
+        cf.inherit_interfaces(klass)
+
+        cf.inherit_fields(klass, attrs)
+        cf.inherit_methods(klass, attrs)
+        cf.inherit_attributes(klass)
+
+        return cf
+
+    
+    def inherit_attributes(self, object klass):
         self.attributes = JvmBytecodeAttributes()
 
-        #  TODO: InnerClasses
-        # ?
+        # InnerClasses - NOT SUPPORTED
+        # EnclosingMethod - NOT SUPPORTED
+        # Synthetic - NOT SUPPORTED
+        # Signature - NOT SUPPORTED (maybe in the future to support generics)
+        # SourceFile - NOT SUPPORTED (maybe in the future)
+        # SourceDebugExtension - NOT SUPPORTED
+        # Deprecated - NOT SUPPORTED (maybe in the future)
+        # RuntimeVisibleAnnotations - NOT SUPPORTED
+        # RuntimeInvisibleAnnotations - NOT SUPPORTED
+        # BootstrapMethods - NOT SUPPORTED
 
-        
-        
 
-    def parse_methods(self):
+
+    def inherit_methods(self, object klass, attrs):
         self.methods = JvmBytecodeMethods()
-        for method in self.klass.getMethods(inherited=False).values():
-            self.methods.add(method, self.klass, self.klass.jvm, self.constant_pool)
 
+        # TODO: inherit methods, this will be a bit more complicated since we need to check for overrides, create bytecode, call natives, etc.
+        # this will be quite a bit of work, but it will be worth it since it will allow us to create classes from python code which are fully functional
 
-    def parse_fields(self):
+    
 
+    def add_field(self, str name, str signature, bint static, object default):
+        if not static and default:
+            raise TypeError("Non static field cannot have default value")
+        
+        if default and signature not in ConstantValueAttribute.signatures:
+            raise TypeError(f"Signature of Fields with default value must be one of {ConstantValueAttribute.signatures}")
+
+        
+        self.fields.add_new(self.constant_pool, name, signature, static, True, default)
+
+    
+    def inherit_fields(self, object klass, attrs):
         self.fields = JvmBytecodeFields()
-        for field in self.klass.getFields(inherited=False).values():
-            self.fields.add(field, self.klass, self.klass.jvm, self.constant_pool)
 
-    def parse_methods(self):
-        self.methods = JvmBytecodeMethods()
-    
-    def parse_interfaces(self):
+        for name, anno in attrs['__annotations__'].items():
+            if isinstance(anno, JvmTypeAnnotation):
+                self.add_field(name, anno.signature, anno.static, attrs.get(name, None))
+            
+
+
+
+    def inherit_interfaces(self, object klass):
         self.interfaces = JvmBytecodeInterfaces()
-        
     
-    def parse_this_super(self):
-        this = self.constant_pool.find_class(self.klass.__name__)
-        super_ = None
-        if self.klass.__base__.is_java():
-            super_ = self.constant_pool.find_class(self.klass.__base__.__name__)
-        
-        self.this_class = this.offset
-        self.super_class = super_.offset if super_ is not None else 0
-        
-
-    def parse_version(self):
-        cdef Jvm jvm = self.klass.jvm
+    def inherit_version(self, object klass):
+        cdef Jvm jvm = klass.jvm
         cdef JNIEnv* env = jvm.jni
         cdef jvmtiEnv* jvmti = jvm.jvmti
-        cdef jclass cls = <jclass><unsigned long long>self.klass._jclass
-
-        cdef jvmtiError err
-        cdef jint flags
-
-        err = jvmti[0].GetClassModifiers(jvmti, cls, &flags)
-
-        if err != 0:
-            raise JvmtiException(err, "Failed to get class modifiers")
-
-        self.access_flags = flags
-    
-
-    def parse_version(self):
-        cdef Jvm jvm = self.klass.jvm
-        cdef JNIEnv* env = jvm.jni
-        cdef jvmtiEnv* jvmti = jvm.jvmti
-        cdef jclass cls = <jclass><unsigned long long>self.klass._jclass
+        cdef jclass cls = <jclass><unsigned long long>klass._jclass
 
         cdef jvmtiError err
 
@@ -95,29 +110,96 @@ cdef class JvmBytecodeClass:
         self.major_version = major_version
         self.minor_version = minor_version
 
-    def parse_cp(self):
-        cdef Jvm jvm = self.klass.jvm
+    def inherit_cp(self, object klass):
+        self.constant_pool = JvmBytecodeConstantPool()
+        
+    def inherit_access_flags(self, object klass):
+        cdef Jvm jvm = klass.jvm
         cdef JNIEnv* env = jvm.jni
         cdef jvmtiEnv* jvmti = jvm.jvmti
-        cdef jclass cls = <jclass><unsigned long long>self.klass._jclass
+        cdef jclass cls = <jclass><unsigned long long>klass._jclass
 
         cdef jvmtiError err
-        cdef jint cp_count
-        cdef jint cp_byte_count
-        cdef unsigned char* cp_bytes
+        cdef jint flags
 
-        jvm.ensure_capability("can_get_constant_pool")
+        err = jvmti[0].GetClassModifiers(jvmti, cls, &flags)
 
-        err = jvmti[0].GetConstantPool(jvmti, cls, &cp_count, &cp_byte_count, &cp_bytes)
         if err != 0:
-            raise JvmtiException(err, "Failed to get constant pool")
+            raise JvmtiException(err, "Failed to get class modifiers")
+
+        self.access_flags = flags
+    
         
-        self.constant_pool = JvmBytecodeConstantPool()
-        self.constant_pool.parse(cp_bytes, cp_count)
+    def inherit_this_super(self, object klass, str name):
+        this = self.constant_pool.find_class(name, True)
+        super_ = self.constant_pool.find_class(klass.__name__, True)
+        
+        self.this_class = this.offset
+        self.super_class = super_.offset if super_ is not None else 0
 
-        err = jvmti[0].Deallocate(jvmti, cp_bytes)
-        if err != 0:
-            raise JvmtiException(err, "Failed to deallocate constant pool")
+    cdef unsigned int size(self):
+        return 8 + self.constant_pool.size() + 6 + self.interfaces.size() + self.fields.size() + self.methods.size() + self.attributes.size()
 
+    
+    def insert(self, Jvm jvm, object loader=None):
+        cdef unsigned char* bytecode = self.generate()
+        jvm.loadClass(bytecode[:self.size()], loader)
 
+        free(bytecode)
 
+        pass
+    
+
+    cdef unsigned char* generate(self) except NULL:
+        cdef unsigned int offset = 0
+        cdef unsigned int size = self.size()
+        cdef unsigned char* bytecode# = <unsigned char*>malloc(8)
+
+        bytecode = <unsigned char*>malloc(size)
+        if bytecode == NULL:
+            raise MemoryError("Failed to allocate memory for bytecode")
+
+        try:
+
+            bytecode[0] = 0xCA
+            bytecode[1] = 0xFE
+            bytecode[2] = 0xBA
+            bytecode[3] = 0xBE
+
+            bytecode[4] = (self.major_version >> 8) & 0xFF
+            bytecode[5] = self.major_version & 0xFF
+
+            bytecode[6] = (self.minor_version >> 8) & 0xFF
+            bytecode[7] = self.minor_version & 0xFF
+
+            offset += 8
+
+            offset += self.constant_pool.render(bytecode + offset)
+
+            bytecode[offset] = (self.access_flags >> 8) & 0xFF
+            bytecode[offset + 1] = self.access_flags & 0xFF
+
+            bytecode[offset + 2] = (self.this_class >> 8) & 0xFF
+            bytecode[offset + 3] = self.this_class & 0xFF
+
+            bytecode[offset + 4] = (self.super_class >> 8) & 0xFF
+            bytecode[offset + 5] = self.super_class & 0xFF
+
+            offset += 6
+
+            offset += self.interfaces.render(bytecode + offset)
+            offset += self.fields.render(bytecode + offset)
+            offset += self.methods.render(bytecode + offset)
+            offset += self.attributes.render(bytecode + offset)
+
+            if offset != size:
+                raise RuntimeError("Bytecode size mismatch", offset, size)
+
+            
+
+        except:
+            free(bytecode)
+            raise
+        
+        return bytecode
+        

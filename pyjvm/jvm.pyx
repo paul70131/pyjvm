@@ -1,5 +1,5 @@
 from pyjvm.c.jni cimport JNI_GetCreatedJavaVMs_t, JNI_CreateJavaVM_t, jint, jsize, JavaVMInitArgs, JNI_VERSION_1_2, JavaVMOption
-from pyjvm.c.jni cimport jsize, jbyte, jclass
+from pyjvm.c.jni cimport jsize, jbyte, jclass, jobject, jvalue, jmethodID
 from pyjvm.c.windows cimport HMODULE, GetModuleHandleA, GetProcAddress, LoadLibraryA
 from pyjvm.c.jvmti cimport JVMTI_VERSION_1_2, jvmtiError, jvmtiEnv, jvmtiPhase, JVMTI_PHASE_DEAD, JVMTI_PHASE_ONLOAD, JVMTI_PHASE_PRIMORDIAL, jvmtiCapabilities
 
@@ -157,14 +157,20 @@ cdef class Jvm:
     def destroy(self):
         self.jvm[0].DestroyJavaVM(self.jvm)
 
-    def loadClass(self, object classfile):
+    def loadClass(self, bytes bytecode, object loader=None):
         # classfile is a file-like object opened in binary mode
-        cdef bytes bytecode = classfile.read()
         cdef jsize length = len(bytecode)
         cdef jvmtiError err
         cdef jint status = 0
+        cdef jobject jloader = NULL
+        cdef jobject junsafe = NULL
+        cdef jmethodID ensureClassInitialized = NULL
+        cdef jvalue args[1]
 
-        cdef jclass cls = self.jni[0].DefineClass(self.jni, NULL, NULL, <const jbyte*>bytecode, length)
+        if loader != None:
+            jloader = <jobject><unsigned long long>loader._jobject
+
+        cdef jclass cls = self.jni[0].DefineClass(self.jni, NULL, jloader, <const jbyte*>bytecode, length)
         JvmExceptionPropagateIfThrown(self)
 
         err = self.jvmti[0].GetClassStatus(self.jvmti, cls, &status)
@@ -172,7 +178,15 @@ cdef class Jvm:
             raise JniException(err, "Could not get class status")
 
         if status < 2:
-            raise JniException(0, "Class not prepared yet")
+            unsafe = self.findClass("sun/misc/Unsafe")
+            theUnsafe = unsafe.theUnsafe
+            ensureClassInitialized = <jmethodID><unsigned long long>theUnsafe.ensureClassInitialized.method_id
+
+            junsafe = <jobject><unsigned long long>theUnsafe._jobject
+
+            args[0].l = cls
+            self.jni[0].CallObjectMethodA(self.jni, junsafe, ensureClassInitialized, args)
+            JvmExceptionPropagateIfThrown(self)
 
         return JvmClassFromJclass(<unsigned long long>cls, self)
 

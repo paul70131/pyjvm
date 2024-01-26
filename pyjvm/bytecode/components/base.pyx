@@ -2,9 +2,8 @@ from libc.stdlib cimport malloc, free
 
 cdef class JvmBytecodeComponent():
 
-    cdef unsigned char* render(self) except *:
+    cdef int render(self, unsigned char* buffer) except -1:
         raise NotImplementedError()
 
-    def __dealloc__(self):
-        if self.buffer != NULL:
-            free(self.buffer)
+    cdef unsigned int size(self) except 0:
+        raise NotImplementedError()

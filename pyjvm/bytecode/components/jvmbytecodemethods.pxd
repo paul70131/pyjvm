@@ -16,6 +16,6 @@ cdef class JvmBytecodeMethod:
     cdef JvmBytecodeAttributes attributes
 
 cdef class JvmBytecodeMethods(JvmBytecodeComponent):
-    cdef list[JvmBytecodeMethod] fields
+    cdef list[JvmBytecodeMethod] methods
 
     cdef void add(self, JvmMethod field, object klass, Jvm jvm, JvmBytecodeConstantPool cp) except *

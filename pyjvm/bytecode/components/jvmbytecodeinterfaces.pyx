@@ -9,15 +9,13 @@ cdef class JvmBytecodeInterfaces(JvmBytecodeComponent):
     def __init__(self):
         self.interfaces = []
 
-    cdef unsigned char* render(self) except *:
-        self.buffer = <unsigned char*>malloc(sizeof(unsigned char) * 2)
-        self.buffer[0] = 0
-        self.buffer[1] = 0
+    cdef int render(self, unsigned char* buffer) except -1:
+        buffer[0] = 0
+        buffer[1] = 0
+        return 2
 
-        return self.buffer
-
-
-    
+    cdef unsigned int size(self) except 0:
+        return 2
 
 
 

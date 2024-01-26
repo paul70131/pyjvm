@@ -6,8 +6,6 @@ from pyjvm.bytecode.components.jvmbytecodemethods cimport JvmBytecodeMethods
 
 
 cdef class JvmBytecodeClass:
-    cdef object klass
-
     cdef unsigned short minor_version
     cdef unsigned short major_version
     cdef JvmBytecodeConstantPool constant_pool
@@ -22,3 +20,5 @@ cdef class JvmBytecodeClass:
     cdef JvmBytecodeAttributes attributes
 
 
+    cdef unsigned char* generate(self) except NULL
+    cdef unsigned int size(self)

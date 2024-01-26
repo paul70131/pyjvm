@@ -10,17 +10,65 @@ from pyjvm.bytecode.components.base cimport JvmBytecodeComponent
 
 
 cdef class JvmBytecodeAttribute:
-    pass
+    cdef unsigned short attribute_name_index
+    cdef unsigned int attribute_length
+
+    cdef unsigned int render(self, unsigned char* buffer) except 0
+    cdef unsigned int size(self) except *
 
 cdef class JvmBytecodeAttributes(JvmBytecodeComponent):
-    cdef list[JvmBytecodeAttribute] fields
+    cdef list[JvmBytecodeAttribute] attributes
 
         
     cdef add(self, JvmBytecodeAttribute field)
 
     
 cdef class ConstantValueAttribute(JvmBytecodeAttribute):
-    cdef unsigned short attribute_name_index
-    cdef unsigned int attribute_length
     cdef unsigned short constant_value_index
 
+cdef class CodeAttributeExcetionTableEntry:
+    cdef unsigned short start_pc
+    cdef unsigned short end_pc
+    cdef unsigned short handler_pc
+    cdef unsigned short catch_type
+
+cdef class CodeAttributeExcetionTable:
+    cdef list[CodeAttributeExcetionTableEntry] entries
+
+
+cdef class CodeAttribute(JvmBytecodeAttribute):
+    cdef unsigned short max_stack
+    cdef unsigned short max_locals
+    cdef unsigned int code_length
+    cdef unsigned char* code
+    cdef CodeAttributeExcetionTable exception_table
+    cdef JvmBytecodeAttributes attributes
+
+cdef class LineNumberTableAttributeEntry:
+    cdef unsigned short start_pc
+    cdef unsigned short line_number
+
+cdef class LineNumberTableAttribute(JvmBytecodeAttribute):
+    cdef list[LineNumberTableAttributeEntry] entries
+
+cdef class LocalVariableTableAttributeEntry:
+    cdef unsigned short start_pc
+    cdef unsigned short length
+    cdef unsigned short name_index
+    cdef unsigned short descriptor_index
+    cdef unsigned short index
+
+cdef class LocalVariableTableAttribute(JvmBytecodeAttribute):
+    cdef list[LocalVariableTableAttributeEntry] entries
+
+cdef class LocalVariableTypeTableAttributeEntry:
+    cdef unsigned short start_pc
+    cdef unsigned short length
+    cdef unsigned short name_index
+    cdef unsigned short signature_index
+    cdef unsigned short index
+
+cdef class LocalVariableTypeTableAttribute(JvmBytecodeAttribute):
+    cdef list[LocalVariableTypeTableAttributeEntry] entries
+
+# TODO StackMapTableAttribute

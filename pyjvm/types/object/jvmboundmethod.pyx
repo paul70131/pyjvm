@@ -20,6 +20,10 @@ cdef class JvmBoundMethod:
 #    cdef object obj
 
     @property
+    def method_id(self):
+        return self.method.method_id
+
+    @property
     def name(self):
         return self.method.name
 

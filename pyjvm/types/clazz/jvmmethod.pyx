@@ -82,6 +82,10 @@ cdef class JvmMethodReference:
 #    cdef JvmMethodSignature signature
 
     @property
+    def method_id(self):
+        return <unsigned long long>self._method_id
+
+    @property
     def signature(self):
         return self.signature
 
@@ -89,6 +93,14 @@ cdef class JvmMethod:
 #    cdef str _name
 #    cdef str _signature
 #    cdef int _modifiers
+
+
+    @property
+    def method_id(self):
+        if len(self._overloads) != 1:
+            raise Exception("Cannot get jmethodID for overloaded method")
+        
+        return self._overloads[0].method_id
 
     @property
     def name(self):
