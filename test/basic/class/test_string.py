@@ -16,7 +16,7 @@ class TestString(TestCase):
             jvm = Jvm.aquire()
 
             with open(class_file, 'rb') as f:
-                return jvm.loadClass(f)
+                return jvm.loadClass(f.read())
             
     def test_string(self):
         jvm = Jvm.aquire()

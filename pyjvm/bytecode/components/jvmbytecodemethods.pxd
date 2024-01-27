@@ -18,4 +18,4 @@ cdef class JvmBytecodeMethod:
 cdef class JvmBytecodeMethods(JvmBytecodeComponent):
     cdef list[JvmBytecodeMethod] methods
 
-    cdef void add(self, JvmMethod field, object klass, Jvm jvm, JvmBytecodeConstantPool cp) except *
+    cdef void add(self, JvmBytecodeMethod method)

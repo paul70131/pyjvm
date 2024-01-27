@@ -60,7 +60,7 @@ cdef class JvmMethodSignature:
         f_args, f_ret = self.parse()
 
         if len(f_args) != len(args):
-            raise Exception("Invalid number of arguments")
+            return NULL
         
         jargs = <jvalue*>malloc(sizeof(jvalue) * len(args))
                 

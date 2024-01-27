@@ -111,9 +111,21 @@ extensions = [
         ['pyjvm/bytecode/components/base.pyx'],
         include_dirs=["./pyjvm", "./pyjvm/c/headers"],
     ),
+    Extension(
+        'pyjvm.bytecode.jvmmethodlink',
+        ['pyjvm/bytecode/jvmmethodlink.pyx'],
+        include_dirs=["./pyjvm", "./pyjvm/c/headers"],
+    ),
 ]
 
 JAVA_HOME = os.environ.get("JAVA_HOME", None)
+
+# Compile java files
+
+for f in os.listdir("pyjvm/java"):
+    if f.endswith(".java"):
+        subprocess.check_call(["javac", f"pyjvm/java/{f}"])
+    
 
 setup(
     name='pyjvm',

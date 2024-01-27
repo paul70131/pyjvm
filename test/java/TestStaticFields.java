@@ -48,4 +48,12 @@ public class TestStaticFields {
         return o.number;
     }
 
+    public int test_override_noargs() {
+        return 1;
+    }
+
+    public float test_override_args(int a, float b, long c, boolean d, String e) {
+        return a + b;
+    }
+
 }

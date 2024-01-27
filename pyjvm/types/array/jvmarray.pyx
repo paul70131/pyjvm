@@ -25,6 +25,10 @@ cdef class JvmArray:
     #cdef Jvm jvm
     #cdef int current_index
 
+    @property
+    def _jobject(self):
+        return <unsigned long long>self._jarray
+
 
     def __init__(self, unsigned long long arr, str signature, Jvm jvm):
         cdef jobject noid = jvm.jni[0].NewGlobalRef(jvm.jni, <jobject>arr)

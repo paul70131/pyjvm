@@ -140,6 +140,9 @@ class JvmClassMeta(type):
         jni[0].DeleteGlobalRef(jni, <jobject><unsigned long long>self._jclass)
 
     def __new__(cls, name, bases, attrs):
+        if '_jclass' not in attrs:
+            attrs["__skip__init__"] = True
+            return cls.__inherit(name, bases, attrs)
         return super().__new__(cls, name, bases, attrs)
 
     def is_java(cls):
@@ -156,7 +159,7 @@ class JvmClassMeta(type):
 
         return JvmObjectFromJobject(<unsigned long long>loader, jvm)
 
-    def __inherit(cls, name, bases, attrs):
+    def __inherit(name, bases, attrs):
         if not isinstance(bases[0], JvmClassMeta):
             raise TypeError("cannot inherit from non-JvmClass")
         
@@ -166,7 +169,7 @@ class JvmClassMeta(type):
         
         
         bytecodeClass = JvmBytecodeClass.inherit(bases[0], fullname, attrs)
-        bytecodeClass.insert(bases[0].jvm, bases[0].getClassLoader())
+        return bytecodeClass.insert(bases[0].jvm, bases[0].getClassLoader())
 
 
     def __dir__(cls):
@@ -177,8 +180,7 @@ class JvmClassMeta(type):
 
     
     def __init__(cls, name, bases, attrs):
-        if '_jclass' not in attrs:
-            cls.__inherit(name, bases, attrs)
+        if attrs.get("__skip__init__", False):
             return
         cls._jclass = attrs['_jclass']
         cls.signature = attrs['signature']

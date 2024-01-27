@@ -166,3 +166,4 @@ pyjvm/*.pyd
 
 
 test/java/*.class
+pyjvm/java/*.class

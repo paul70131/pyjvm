@@ -5,8 +5,9 @@ from pyjvm.jvm cimport Jvm
 from libc.stdlib cimport free, malloc
 
 from pyjvm.exceptions.exception import JvmtiException
-from pyjvm.bytecode.annotations import JvmTypeAnnotation
+from pyjvm.bytecode.annotations import JvmFieldAnnotation
 from pyjvm.bytecode.components.jvmbytecodeattributes cimport ConstantValueAttribute
+from pyjvm.types.clazz.jvmmethod cimport JvmMethod, JvmMethodSignature
 
 cdef class JvmBytecodeClass:
     #cdef object klass
@@ -59,12 +60,44 @@ cdef class JvmBytecodeClass:
         # BootstrapMethods - NOT SUPPORTED
 
 
+    def add_method(self, object func, object klass, bint override, Jvm jvm):
+        cdef JvmMethodSignature descriptor
+        cdef JvmMethod to_override
+        if override:
+            methods = klass.getMethods()
+            if not func.__name__ in methods:
+                raise TypeError(f"Method {func.__name__} not found in {klass}")
+
+            to_override = methods[func.__name__]
+            if len(to_override._overloads) != 1:
+                raise TypeError(f"Cannot override overloaded methods yet")
+
+            access_flags = to_override._modifiers
+            name = to_override._name
+            descriptor = to_override._overloads[0].signature
+
+            self.methods.add_new(self.constant_pool, access_flags, name, descriptor, jvm, func)
+
+
+            return
+
+        raise NotImplementedError("Can only override ATM")
+
 
     def inherit_methods(self, object klass, attrs):
+        cdef Jvm jvm = klass.jvm
         self.methods = JvmBytecodeMethods()
 
         # TODO: inherit methods, this will be a bit more complicated since we need to check for overrides, create bytecode, call natives, etc.
         # this will be quite a bit of work, but it will be worth it since it will allow us to create classes from python code which are fully functional
+
+        funcs = [func for func in attrs.values() if callable(func)]
+
+        if len(funcs) != 0:
+            jvm.ensureBridgeLoaded()
+
+        for func in funcs:
+            self.add_method(func, klass, hasattr(func, '__joverride'), jvm)
 
     
 
@@ -73,7 +106,7 @@ cdef class JvmBytecodeClass:
             raise TypeError("Non static field cannot have default value")
         
         if default and signature not in ConstantValueAttribute.signatures:
-            raise TypeError(f"Signature of Fields with default value must be one of {ConstantValueAttribute.signatures}")
+            raise TypeError(f"Signature of Fields with default value must be one of {ConstantValueAttribute.signatures} - {signature}")
 
         
         self.fields.add_new(self.constant_pool, name, signature, static, True, default)
@@ -83,7 +116,7 @@ cdef class JvmBytecodeClass:
         self.fields = JvmBytecodeFields()
 
         for name, anno in attrs['__annotations__'].items():
-            if isinstance(anno, JvmTypeAnnotation):
+            if isinstance(anno, JvmFieldAnnotation):
                 self.add_field(name, anno.signature, anno.static, attrs.get(name, None))
             
 
@@ -143,11 +176,15 @@ cdef class JvmBytecodeClass:
     
     def insert(self, Jvm jvm, object loader=None):
         cdef unsigned char* bytecode = self.generate()
-        jvm.loadClass(bytecode[:self.size()], loader)
+
+        with open("test.class", "wb") as f:
+            f.write(bytecode[:self.size()])
+
+        c = jvm.loadClass(bytecode[:self.size()], loader)
 
         free(bytecode)
 
-        pass
+        return c
     
 
     cdef unsigned char* generate(self) except NULL:

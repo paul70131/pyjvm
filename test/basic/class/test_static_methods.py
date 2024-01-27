@@ -15,7 +15,7 @@ class TestStaticMethods(TestCase):
             class_file = compile_java(to_load)
 
             with open(class_file, 'rb') as f:
-                return jvm.loadClass(f)
+                return jvm.loadClass(f.read())
             
 
     def test_ret_void(self):

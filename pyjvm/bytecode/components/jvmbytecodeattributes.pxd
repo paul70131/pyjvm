@@ -35,6 +35,10 @@ cdef class CodeAttributeExcetionTableEntry:
 cdef class CodeAttributeExcetionTable:
     cdef list[CodeAttributeExcetionTableEntry] entries
 
+    cdef unsigned int size(self) except 0
+
+    cdef unsigned int render(self, unsigned char* buffer) except 0
+
 
 cdef class CodeAttribute(JvmBytecodeAttribute):
     cdef unsigned short max_stack
@@ -43,6 +47,9 @@ cdef class CodeAttribute(JvmBytecodeAttribute):
     cdef unsigned char* code
     cdef CodeAttributeExcetionTable exception_table
     cdef JvmBytecodeAttributes attributes
+
+    cdef unsigned int render(self, unsigned char* buffer) except 0
+    cdef unsigned int size(self) except *
 
 cdef class LineNumberTableAttributeEntry:
     cdef unsigned short start_pc
@@ -70,5 +77,6 @@ cdef class LocalVariableTypeTableAttributeEntry:
 
 cdef class LocalVariableTypeTableAttribute(JvmBytecodeAttribute):
     cdef list[LocalVariableTypeTableAttributeEntry] entries
+ 
 
 # TODO StackMapTableAttribute

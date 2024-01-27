@@ -1,5 +1,5 @@
 from pyjvm.c.jni cimport JNI_GetCreatedJavaVMs_t, JNI_CreateJavaVM_t, jint, jsize, JavaVMInitArgs, JNI_VERSION_1_2, JavaVMOption
-from pyjvm.c.jni cimport jsize, jbyte, jclass, jobject, jvalue, jmethodID
+from pyjvm.c.jni cimport jsize, jbyte, jclass, jobject, jvalue, jmethodID, JNINativeMethod, jarray
 from pyjvm.c.windows cimport HMODULE, GetModuleHandleA, GetProcAddress, LoadLibraryA
 from pyjvm.c.jvmti cimport JVMTI_VERSION_1_2, jvmtiError, jvmtiEnv, jvmtiPhase, JVMTI_PHASE_DEAD, JVMTI_PHASE_ONLOAD, JVMTI_PHASE_PRIMORDIAL, jvmtiCapabilities
 
@@ -7,6 +7,7 @@ from pyjvm.exceptions.exception import JniException, JvmtiException
 from pyjvm.exceptions.exception cimport JvmExceptionPropagateIfThrown
 
 from pyjvm.types.clazz.jvmclass cimport JvmClassFromJclass, JvmClass
+from pyjvm.types.array.jvmarray cimport CreateJvmArray
 from libc.string cimport memset
 
 import os
@@ -15,20 +16,46 @@ import faulthandler
 
 cdef Jvm __instance = None
 
+cdef jobject __invoke_override(Jvm jvm, int override_id, object args):
+
+    cdef JvmMethodLink link = jvm.links[override_id]
+    
+    return link.invoke(jvm, args)
+
+cdef extern jobject PyjvmBridge__call_override(JNIEnv* jni, jclass cls, jarray args) nogil:
+    with gil:
+        jvm = Jvm.aquire()
+        array = CreateJvmArray(jvm, args, "[Ljava/lang/Object;")
+        override_id = array[0].intValue()
+        return __invoke_override(jvm, override_id, array)
+
+
 cdef class Jvm:
     #cdef JavaVM* jvm
     #cdef JNIEnv* jni
     #cdef jvmtiEnv* jvmti
     #cdef public dict __classes
+    #cdef list[JvmMethodLink] links
+
+
+    cdef JvmMethodLink newMethodLink(self, object method, JvmMethodSignature signature):
+        cdef JvmMethodLink link = JvmMethodLink(len(self.links), method, signature)
+        self.links.append(link)
+        return link
 
     def __cinit__(self):
+        global __instance
+        __instance = self
         self.jvm = NULL
         self.jni = NULL
         self.jvmti = NULL
         self.__classes = {}
+        self.bridge_loaded = False
+        self.links = []
 
     @staticmethod
     def aquire() -> Jvm:
+        global __instance
         if __instance == None:
             try:
                 jvm = Jvm.attach()
@@ -144,6 +171,33 @@ cdef class Jvm:
 
         return result
 
+    cdef void ensureBridgeLoaded(self) except *:
+        cdef JNINativeMethod methods[1]
+        cdef jclass bridge_jclass
+        if not self.bridge_loaded:
+            try:
+                bridge = self.findClass("pyjvm/java/PyjvmBridge")
+            except:
+                import pyjvm
+                base = os.path.dirname(pyjvm.__file__)
+                bridgePath = os.path.join(base, "java", "PyjvmBridge.class")
+                with open(bridgePath, "rb") as f:
+                    bytecode = f.read()
+                    bridge = self.loadClass(bytecode, None, False)
+                
+            methods[0].name = "call_override"
+            methods[0].signature = "([Ljava/lang/Object;)Ljava/lang/Object;"
+            methods[0].fnPtr = <void*>PyjvmBridge__call_override
+
+            bridge_jclass = <jclass><unsigned long long>bridge._jclass
+        
+            self.jni[0].RegisterNatives(self.jni, bridge_jclass, methods, 1)
+            JvmExceptionPropagateIfThrown(self)
+            self.bridge_loaded = True
+            
+
+
+
     cpdef object findClass(self, str name):
         if name in self.__classes:
             return self.__classes[name]
@@ -157,7 +211,7 @@ cdef class Jvm:
     def destroy(self):
         self.jvm[0].DestroyJavaVM(self.jvm)
 
-    def loadClass(self, bytes bytecode, object loader=None):
+    def loadClass(self, bytes bytecode, object loader=None, bint resolve=True):
         # classfile is a file-like object opened in binary mode
         cdef jsize length = len(bytecode)
         cdef jvmtiError err
@@ -188,7 +242,10 @@ cdef class Jvm:
             self.jni[0].CallObjectMethodA(self.jni, junsafe, ensureClassInitialized, args)
             JvmExceptionPropagateIfThrown(self)
 
-        return JvmClassFromJclass(<unsigned long long>cls, self)
+        if resolve:
+            return JvmClassFromJclass(<unsigned long long>cls, self)
+        else:
+            return <unsigned long long>cls
 
     cpdef void ensure_capability(self, str capability) except *:
         cdef jvmtiCapabilities capas

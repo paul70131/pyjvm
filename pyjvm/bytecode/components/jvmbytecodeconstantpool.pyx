@@ -1,6 +1,8 @@
 from libc.stdlib cimport malloc, free, realloc
 from libc.string cimport memcpy, strncmp
 
+from pyjvm.c.jni cimport jfloat, jdouble
+
 from pyjvm.bytecode.components.base cimport JvmBytecodeComponent
 
 cdef class JvmBytecodeConstantPool(JvmBytecodeComponent):
@@ -33,9 +35,17 @@ cdef class JvmBytecodeConstantPool(JvmBytecodeComponent):
         self.constant_pool = []
 
     cdef unsigned short add(self, JvmBytecodeConstantPoolEntry entry) except *:
+        if isinstance(entry, JBCPE_Long) or isinstance(entry, JBCPE_Double):
+            self.constant_pool.append(entry)
+            self.constant_pool.append(JBCPE_Placeholder())
+            entry.set_offset(len(self.constant_pool) - 1)
+            return len(self.constant_pool) - 1
+
         self.constant_pool.append(entry)
         entry.set_offset(len(self.constant_pool))
         return len(self.constant_pool)
+
+    
 
     cdef JvmBytecodeConstantPoolEntry find_class(self, str py_class, bint put=False) except *:
         cdef JvmBytecodeConstantPoolEntry entry
@@ -58,6 +68,28 @@ cdef class JvmBytecodeConstantPool(JvmBytecodeComponent):
 
         raise Exception("Class not found in constant pool: %s" % py_class)
 
+    
+    cdef JvmBytecodeConstantPoolEntry find_jstring(self, str py_string, bint put=False) except *:
+        cdef JvmBytecodeConstantPoolEntry entry
+        cdef JvmBytecodeConstantPoolEntry value_entry
+
+        value_entry = self.find_string(py_string, put)
+
+        for entry in self.constant_pool:
+            if entry.tag == 9:
+                str_entry = <JBCPE_String>entry
+
+                if str_entry.string_index == value_entry.offset:
+                    return str_entry
+        
+        if put:
+            entry = JBCPE_String(value_entry.offset)
+            self.add(entry)
+            return entry
+        
+        raise Exception("String not found in constant pool: %s" % py_string)
+
+
 
     cdef JvmBytecodeConstantPoolEntry find_long(self, long py_long, bint put=False) except *:
         cdef JvmBytecodeConstantPoolEntry entry
@@ -70,6 +102,11 @@ cdef class JvmBytecodeConstantPool(JvmBytecodeComponent):
                 if long == py_long:
                     return entry
         
+        if put:
+            entry = JBCPE_Long(py_long)
+            self.add(entry)
+            return entry
+
         raise Exception()
 
     cdef JvmBytecodeConstantPoolEntry find_float(self, float py_float, bint put=False) except *:
@@ -83,6 +120,11 @@ cdef class JvmBytecodeConstantPool(JvmBytecodeComponent):
                 if float_entry.bytes == py_float:
                     return entry
 
+        if put:
+            entry = JBCPE_Float(py_float)
+            self.add(entry)
+            return entry
+
         raise Exception()
 
     cdef JvmBytecodeConstantPoolEntry find_double(self, double py_double, bint put=False) except *:
@@ -95,6 +137,11 @@ cdef class JvmBytecodeConstantPool(JvmBytecodeComponent):
 
                 if double_entry.bytes == py_double:
                     return entry
+        
+        if put:
+            entry = JBCPE_Double(py_double)
+            self.add(entry)
+            return entry
 
         raise Exception()
 
@@ -129,7 +176,7 @@ cdef class JvmBytecodeConstantPool(JvmBytecodeComponent):
             if entry.tag == 1:
                 utf8_entry = <JBCPE_Utf8>entry
 
-                if strncmp(<const char*>utf8_entry.bytes, string, utf8_entry.length) == 0:
+                if len(py_string) == utf8_entry.length and strncmp(<const char*>utf8_entry.bytes, string, utf8_entry.length) == 0:
                     return entry
         
         if put:
@@ -138,6 +185,52 @@ cdef class JvmBytecodeConstantPool(JvmBytecodeComponent):
             return utf8_entry
 
         raise Exception("String not found in constant pool: %s" % string)
+
+    cdef JvmBytecodeConstantPoolEntry find_name_and_type(self, str name, str type_, bint put=False) except *:
+        cdef JvmBytecodeConstantPoolEntry entry
+        cdef JvmBytecodeConstantPoolEntry name_entry
+        cdef JvmBytecodeConstantPoolEntry type_entry
+
+        name_entry = self.find_string(name, put)
+        type_entry = self.find_string(type_, put)
+
+        for entry in self.constant_pool:
+            if entry.tag == 12:
+                nt_entry = <JBCPE_NameAndType>entry
+
+                if nt_entry.name_index == name_entry.offset and nt_entry.descriptor_index == type_entry.offset:
+                    return entry
+
+        
+        if put:
+            entry = JBCPE_NameAndType(name_entry.offset, type_entry.offset)
+            self.add(entry)
+            return entry
+
+        raise Exception(f"NameAndType not found in CP: {name} {type}")
+
+    cdef JvmBytecodeConstantPoolEntry find_methodref(self, str classname, str methodname, str methodtype, bint put=False) except *:
+        cdef JvmBytecodeConstantPoolEntry entry
+        cdef JvmBytecodeConstantPoolEntry class_entry
+        cdef JvmBytecodeConstantPoolEntry nt_entry
+
+        class_entry = self.find_class(classname, put)
+        nt_entry = self.find_name_and_type(methodname, methodtype, put)
+
+        for entry in self.constant_pool:
+            if entry.tag == 10:
+                methodref_entry = <JBCPE_Methodref>entry
+
+                if methodref_entry.class_index == class_entry.offset and methodref_entry.name_and_type_index == nt_entry.offset:
+                    return entry
+        
+        if put:
+            entry = JBCPE_Methodref(class_entry.offset, nt_entry.offset)
+            self.add(entry)
+            return entry
+        
+        raise Exception(f"MethodRef not found in CP: {classname} {methodname} {methodtype}")
+
 
     cdef void parse(self, unsigned char* constant_pool, unsigned short constant_pool_count) except *:
         cdef int b_offset = 0
@@ -258,8 +351,12 @@ cdef class JBCPE_Methodref(JvmBytecodeConstantPoolEntry):
     cdef unsigned short class_index
     cdef unsigned short name_and_type_index
 
-    def __init__(self):
+    def __init__(self, unsigned short class_idx = 0, unsigned short name_and_type_idx = 0):
         self.tag = 10
+        if class_idx:
+            self.class_index = class_idx
+        if name_and_type_idx:
+            self.name_and_type_index = name_and_type_idx
 
     cpdef int size(self):
         return 5
@@ -300,8 +397,10 @@ cdef class JBCPE_InterfaceMethodref(JvmBytecodeConstantPoolEntry):
 cdef class JBCPE_String(JvmBytecodeConstantPoolEntry):
     cdef unsigned short string_index
 
-    def __init__(self):
+    def __init__(self, unsigned short string_idx = 0):
         self.tag = 8
+        if string_idx:
+            self.string_index = string_idx
 
     cpdef int size(self):
         return 3
@@ -338,24 +437,35 @@ cdef class JBCPE_Integer(JvmBytecodeConstantPoolEntry):
 cdef class JBCPE_Float(JvmBytecodeConstantPoolEntry):
     cdef float bytes
 
-    def __init__(self):
+    def __init__(self, object py_float = None):
         self.tag = 4
+        if py_float != None:
+            self.bytes =<float> py_float
 
     cpdef int size(self):
         return 5
 
     cdef int render(self, unsigned char* buffer) except -1:
+        cdef jfloat jfloat_bytes = self.bytes
         buffer[0] = self.tag
-        memcpy(&buffer[1], &self.bytes, 4)
+        buffer[1] = (<unsigned char*>(&jfloat_bytes))[3]
+        buffer[2] = (<unsigned char*>(&jfloat_bytes))[2]
+        buffer[3] = (<unsigned char*>(&jfloat_bytes))[1]
+        buffer[4] = (<unsigned char*>(&jfloat_bytes))[0]
+    
+    
     
     cdef void parse(self, unsigned char* buffer) except *:
-        memcpy(&self.bytes, &buffer[1], 4)
+        buffer[0] = self.tag
+        memcpy(&buffer[1], &self.bytes, 4)
     
 cdef class JBCPE_Long(JvmBytecodeConstantPoolEntry):
     cdef long bytes
 
-    def __init__(self):
+    def __init__(self, object py_long = None):
         self.tag = 5
+        if py_long != None:
+            self.bytes =<long> py_long
 
     cdef bint skip_next(self):
         return True
@@ -365,7 +475,14 @@ cdef class JBCPE_Long(JvmBytecodeConstantPoolEntry):
 
     cdef int render(self, unsigned char* buffer) except -1:
         buffer[0] = self.tag
-        memcpy(&buffer[1], &self.bytes, 8)
+        buffer[1] = (self.bytes >> 56) & 0xFF
+        buffer[2] = (self.bytes >> 48) & 0xFF
+        buffer[3] = (self.bytes >> 40) & 0xFF
+        buffer[4] = (self.bytes >> 32) & 0xFF
+        buffer[5] = (self.bytes >> 24) & 0xFF
+        buffer[6] = (self.bytes >> 16) & 0xFF
+        buffer[7] = (self.bytes >> 8) & 0xFF
+        buffer[8] = self.bytes & 0xFF
     
     cdef void parse(self, unsigned char* buffer) except *:
         memcpy(&self.bytes, &buffer[1], 8)
@@ -373,8 +490,10 @@ cdef class JBCPE_Long(JvmBytecodeConstantPoolEntry):
 cdef class JBCPE_Double(JvmBytecodeConstantPoolEntry):
     cdef double bytes
 
-    def __init__(self):
+    def __init__(self, object py_double = None):
         self.tag = 6
+        if py_double != None:
+            self.bytes = <double>py_double
 
     cdef bint skip_next(self):
         return True
@@ -383,8 +502,17 @@ cdef class JBCPE_Double(JvmBytecodeConstantPoolEntry):
         return 9
 
     cdef int render(self, unsigned char* buffer) except -1:
+        cdef jdouble joduble_bytes = self.bytes
         buffer[0] = self.tag
-        memcpy(&buffer[1], &self.bytes, 8)
+
+        buffer[1] = (<unsigned char*>(&joduble_bytes))[7]
+        buffer[2] = (<unsigned char*>(&joduble_bytes))[6]
+        buffer[3] = (<unsigned char*>(&joduble_bytes))[5]
+        buffer[4] = (<unsigned char*>(&joduble_bytes))[4]
+        buffer[5] = (<unsigned char*>(&joduble_bytes))[3]
+        buffer[6] = (<unsigned char*>(&joduble_bytes))[2]
+        buffer[7] = (<unsigned char*>(&joduble_bytes))[1]
+        buffer[8] = (<unsigned char*>(&joduble_bytes))[0]
     
     cdef void parse(self, unsigned char* buffer) except *:
         memcpy(&self.bytes, &buffer[1], 8)
@@ -406,8 +534,12 @@ cdef class JBCPE_NameAndType(JvmBytecodeConstantPoolEntry):
     cdef unsigned short name_index
     cdef unsigned short descriptor_index
 
-    def __init__(self):
+    def __init__(self, name_idx = 0, descriptor_idx = 0):
         self.tag = 12
+        if name_idx:
+            self.name_index = name_idx
+        if descriptor_idx:
+            self.descriptor_index = descriptor_idx
 
     cpdef int size(self):
         return 5
