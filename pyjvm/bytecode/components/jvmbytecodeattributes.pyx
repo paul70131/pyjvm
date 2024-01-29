@@ -1,5 +1,5 @@
 from pyjvm.jvm cimport Jvm
-from pyjvm.bytecode.components.jvmbytecodeconstantpool cimport JvmBytecodeConstantPool
+from pyjvm.bytecode.components.jvmbytecodeconstantpool cimport JvmBytecodeConstantPool, JvmBytecodeConstantPoolEntry
 from pyjvm.types.clazz.jvmfield cimport JvmField
 from pyjvm.bytecode.components.jvmbytecodeattributes cimport JvmBytecodeAttributes
 from pyjvm.c.jni cimport JNIEnv, jobject, jclass
@@ -182,3 +182,137 @@ cdef class ConstantValueAttribute(JvmBytecodeAttribute):
         else:
             raise Exception("Unknown field type: " + signature)
         
+
+        
+cdef class StackMapFrame:
+#    cdef unsigned char frame_type
+    cdef unsigned int size(self) except 0:
+        raise NotImplementedError()
+
+    cdef unsigned int render(self, unsigned char* buffer) except 0:
+        raise NotImplementedError()
+
+cdef class VerificationTypeInfo:
+#    cdef unsigned char tag
+#    cdef unsigned short cpool_index
+
+    def __init__(self, str signature, JvmBytecodeConstantPool cp):
+        if signature == "this":
+            self.tag = 0
+        elif signature == "int":
+            self.tag = 1
+        elif signature == "float":
+            self.tag = 2
+        elif signature == "long":
+            self.tag = 4
+        elif signature == "double":
+            self.tag = 3
+        elif signature == "null":
+            self.tag = 5
+        elif signature == "uninitializedThis":
+            self.tag = 6
+        elif signature.startswith("uninitialized"):
+            self.tag = 8
+            self.cpool_index = cp.find_class(signature[13:-1], True).offset
+        elif signature.startswith("L"):
+            self.tag = 7
+            self.cpool_index = cp.find_class(signature[1:-1], True).offset
+        else:
+            raise Exception("Unknown signature: " + signature)
+    
+    cdef unsigned int size(self) except 0:
+        if self.tag in [0, 1, 2, 3, 4, 5, 6]:
+            return 1
+        elif self.tag in [7, 8]:
+            return 3
+        else:
+            raise Exception("Unknown tag: " + str(self.tag))
+    
+    cdef unsigned int render(self, unsigned char* buffer) except 0:
+        buffer[0] = self.tag
+        if self.tag in [7, 8]:
+            buffer[1] = (self.cpool_index >> 8) & 0xFF
+            buffer[2] = self.cpool_index & 0xFF
+        return self.size()
+
+cdef class AppendFrame(StackMapFrame):
+#    cdef unsigned short offset_delta
+#    cdef list[VerificationTypeInfo] locals
+
+    def __init__(self, unsigned short offset_delta, list[str] locals, JvmBytecodeConstantPool cp):
+        if len(locals) > 4:
+            raise Exception("Too many locals for append frame, use full frame instead")
+        if len(locals) == 0:
+            raise Exception("No locals for append frame")
+
+        self.offset_delta = offset_delta
+        self.frame_type = 251 + len(locals)
+        self.locals = []
+        for local in locals:
+            self.locals.append(VerificationTypeInfo(local, cp))
+
+    cdef unsigned int size(self) except 0:
+        cdef unsigned int size = 3
+        cdef VerificationTypeInfo local
+        
+        for local in self.locals:
+            size += local.size()
+        
+        return size
+
+    cdef unsigned int render(self, unsigned char* buffer) except 0:
+        cdef unsigned short i = 3
+        cdef VerificationTypeInfo local
+        
+        buffer[0] = self.frame_type
+        buffer[1] = (self.offset_delta >> 8) & 0xFF
+        buffer[2] = self.offset_delta & 0xFF
+
+        for local in self.locals:
+            local.render(buffer + i)
+            i += local.size()
+        
+        return 3 + i
+
+cdef class StackMapTableAttribute(JvmBytecodeAttribute):
+#    cdef list[StackMapFrame] frames
+
+    def __init__(self, JvmBytecodeConstantPool cp):
+        cdef JvmBytecodeConstantPoolEntry entry = cp.find_string("StackMapTable", True)
+        self.attribute_name_index = entry.offset
+        self.attribute_length = 0
+        self.frames = []
+
+
+    cdef unsigned int size(self) except 0:
+        cdef unsigned int size = 8
+        cdef StackMapFrame frame
+        
+        for frame in self.frames:
+            size += frame.size()
+        
+        return size
+
+    def append(self, unsigned short offset_delta, list[str] locals, JvmBytecodeConstantPool cp):
+        self.frames.append(AppendFrame(offset_delta, locals, cp))
+
+    cdef unsigned int render(self, unsigned char* buffer) except 0:
+        cdef unsigned int length = self.size() - 6
+        cdef unsigned short entry_count = len(self.frames)
+        cdef unsigned short i = 0
+        cdef StackMapFrame frame
+        
+        buffer[0] = (self.attribute_name_index >> 8) & 0xFF
+        buffer[1] = self.attribute_name_index & 0xFF
+        buffer[2] = (length >> 24) & 0xFF
+        buffer[3] = (length >> 16) & 0xFF
+        buffer[4] = (length >> 8) & 0xFF
+        buffer[5] = length & 0xFF
+        buffer[6] = (entry_count >> 8) & 0xFF
+        buffer[7] = entry_count & 0xFF
+
+        for frame in self.frames:
+            frame.render(buffer + 8 + i)
+            i += frame.size()
+        
+        return 8 + i

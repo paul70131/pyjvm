@@ -13,13 +13,13 @@ class TestEnum(TestCase):
         except:
             to_load = "test/java/TestEnum.java"
             class_file = compile_java(to_load)
-            jvm = Jvm.aquire()
+            jvm = Jvm.acquire()
 
             with open(class_file, 'rb') as f:
                 return jvm.loadClass(f)
             
     def test_string(self):
-        jvm = Jvm.aquire()
+        jvm = Jvm.acquire()
 
         test_class = self.get_test_class(jvm)
 

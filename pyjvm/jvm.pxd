@@ -12,6 +12,7 @@ cdef class Jvm:
     cdef bint bridge_loaded
     cdef public dict __classes
     cdef list[JvmMethodLink] links
+    cdef public object _export_generated_classes
 
     cdef JvmMethodLink newMethodLink(self, object method, JvmMethodSignature signature)
     cpdef void ensure_capability(self, str capability) except *

@@ -5,5 +5,5 @@ from pyjvm.jvm import Jvm
 
 class TestAttachCreate(TestCase):
 
-    def test_aquire(self):
-        jvm = Jvm.aquire()
+    def test_acquire(self):
+        jvm = Jvm.acquire()

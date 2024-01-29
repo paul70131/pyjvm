@@ -11,7 +11,7 @@ class TestAttachCreate(TestCase):
 
     def test_load_class(self):
         
-        jvm = Jvm.aquire()
+        jvm = Jvm.acquire()
 
         with self.assertRaises(Exception):
             TestLoadClass = jvm.findClass("test/java/TestLoadClass")

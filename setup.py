@@ -125,21 +125,22 @@ JAVA_HOME = os.environ.get("JAVA_HOME", None)
 for f in os.listdir("pyjvm/java"):
     if f.endswith(".java"):
         subprocess.check_call(["javac", f"pyjvm/java/{f}"])
-    
+
 
 setup(
     name='pyjvm',
     description="Python Bindings for the JVM (jni & jvmti)",
     ext_modules=cythonize(extensions, language_level=3, build_dir="build/c"),
-    packages=find_packages("pyjvm/src"),
+    packages=find_packages(".") + ["pyjvm.java"],
     package_dir={'pyjvm': 'pyjvm'},
     #b
     include_dirs=[
-        "./pyjvm/src",
-        "./pyjvm/src/c/headers",
         JAVA_HOME + "/include",
         JAVA_HOME + "/include/win32",
     ],
+    package_data={
+        "pyjvm.java": ["**/*.class"],
+    },
     zip_safe=False,
     version='0.0.2',
     author="Paul K."

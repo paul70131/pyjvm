@@ -54,30 +54,30 @@ cdef class JvmMethodLink:
             return <jobject><unsigned long long>0
         if ret_type == 'I':
             javaLangInteger = jvm.findClass('java/lang/Integer')
-            r_obj = javaLangInteger.valueOf(r)
+            r_obj = javaLangInteger.valueOf(r if r != None else 0)
         elif ret_type == 'J':
             javaLangLong = jvm.findClass('java/lang/Long')
-            r_obj = javaLangLong.valueOf(r)
+            r_obj = javaLangLong.valueOf(r if r != None else 0)
         elif ret_type == 'F':
             javaLangFloat = jvm.findClass('java/lang/Float')
-            r_obj = javaLangFloat.valueOf(r)
+            r_obj = javaLangFloat.valueOf(r if r != None else 0)
         elif ret_type == 'D':
             javaLangDouble = jvm.findClass('java/lang/Double')
-            r_obj = javaLangDouble.valueOf(r)
+            r_obj = javaLangDouble.valueOf(r if r != None else 0)
         elif ret_type == 'L' or ret_type == '[':
             r_obj = r
         elif ret_type == 'Z':
             javaLangBoolean = jvm.findClass('java/lang/Boolean')
-            r_obj = javaLangBoolean.valueOf(r)
+            r_obj = javaLangBoolean.valueOf(r if r != None else False)
         elif ret_type == 'B':
             javaLangByte = jvm.findClass('java/lang/Byte')
-            r_obj = javaLangByte.valueOf(r)
+            r_obj = javaLangByte.valueOf(r if r != None else 0)
         elif ret_type == 'C':
             javaLangCharacter = jvm.findClass('java/lang/Character')
-            r_obj = javaLangCharacter.valueOf(r)
+            r_obj = javaLangCharacter.valueOf(r if r != None else 0)
         elif ret_type == 'S':
             javaLangShort = jvm.findClass('java/lang/Short')
-            r_obj = javaLangShort.valueOf(r)
+            r_obj = javaLangShort.valueOf(r if r != None else 0)
         else:
             raise Exception("Invalid return type: " + ret_type)
 

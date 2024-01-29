@@ -63,6 +63,20 @@ cdef class JvmBytecodeClass:
     def add_method(self, object func, object klass, bint override, Jvm jvm):
         cdef JvmMethodSignature descriptor
         cdef JvmMethod to_override
+        cdef bint call_super = False
+        if not override:
+            descriptor = JvmMethodSignature(getattr(func, "__jsignature"))
+            access_flags = 0x0001
+            name = func.__name__
+            if name == "__init__":
+                name = "<init>"
+                call_super = getattr(func, "__jcall_super", False)
+
+            self.methods.add_new(self.constant_pool, access_flags, name, descriptor, jvm, func)
+
+            return
+
+
         if override:
             methods = klass.getMethods()
             if not func.__name__ in methods:
@@ -114,6 +128,9 @@ cdef class JvmBytecodeClass:
     
     def inherit_fields(self, object klass, attrs):
         self.fields = JvmBytecodeFields()
+
+        if "__annotations__" not in attrs:
+            return
 
         for name, anno in attrs['__annotations__'].items():
             if isinstance(anno, JvmFieldAnnotation):
@@ -174,11 +191,20 @@ cdef class JvmBytecodeClass:
         return 8 + self.constant_pool.size() + 6 + self.interfaces.size() + self.fields.size() + self.methods.size() + self.attributes.size()
 
     
-    def insert(self, Jvm jvm, object loader=None):
+    def insert(self, Jvm jvm, object loader=None, name=None):
         cdef unsigned char* bytecode = self.generate()
 
-        with open("test.class", "wb") as f:
-            f.write(bytecode[:self.size()])
+        if not name:
+            name = "jvmclass-" + id(self).__str__()
+
+        if getattr(jvm, "_export_generated_classes", False):
+
+            path = getattr(jvm, "_export_generated_classes", ".")
+            if not isinstance(path, str):
+                path = "."
+            path = path + "/"
+            with open(f"{path}{name}.class", "wb") as f:
+                f.write(bytecode[:self.size()])
 
         c = jvm.loadClass(bytecode[:self.size()], loader)
 

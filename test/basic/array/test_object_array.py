@@ -19,7 +19,7 @@ class TestPrimitiveArray(TestCase):
             
 
     def test_string_array(self):
-        jvm = Jvm.aquire()
+        jvm = Jvm.acquire()
         test_class = self.get_test_class(jvm)
 
         self.assertEqual(test_class.string_array_field, ["Hello", "World", "!"])
@@ -28,7 +28,7 @@ class TestPrimitiveArray(TestCase):
         self.assertEqual(list(test_class.string_array_field), ["Hello", "World", "!"])
 
     def test_object_array(self):
-        jvm = Jvm.aquire()
+        jvm = Jvm.acquire()
         test_class = self.get_test_class(jvm)
 
         jlo = jvm.findClass("java/lang/Object")

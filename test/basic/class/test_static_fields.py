@@ -20,7 +20,7 @@ class TestStaticFields(TestCase):
 
     def test_bool(self):
         
-        jvm = Jvm.aquire()
+        jvm = Jvm.acquire()
         test_class = self.get_test_class(jvm)
 
         self.assertEqual(test_class.bool_field, True)
@@ -28,7 +28,7 @@ class TestStaticFields(TestCase):
         self.assertEqual(test_class.bool_field, False)
 
     def test_byte(self):
-        jvm = Jvm.aquire()
+        jvm = Jvm.acquire()
         test_class = self.get_test_class(jvm)
 
         self.assertEqual(test_class.byte_field, 1)
@@ -36,7 +36,7 @@ class TestStaticFields(TestCase):
         self.assertEqual(test_class.byte_field, 2)
 
     def test_char(self):
-        jvm = Jvm.aquire()
+        jvm = Jvm.acquire()
         test_class = self.get_test_class(jvm)
 
         self.assertEqual(test_class.char_field, 'a')
@@ -46,7 +46,7 @@ class TestStaticFields(TestCase):
         self.assertEqual(test_class.char_field, 'B')
 
     def test_short(self):
-        jvm = Jvm.aquire()
+        jvm = Jvm.acquire()
         test_class = self.get_test_class(jvm)
 
         self.assertEqual(test_class.short_field, 2)
@@ -54,7 +54,7 @@ class TestStaticFields(TestCase):
         self.assertEqual(test_class.short_field, 3)
 
     def test_int(self):
-        jvm = Jvm.aquire()
+        jvm = Jvm.acquire()
         test_class = self.get_test_class(jvm)
 
         self.assertEqual(test_class.int_field, 3)
@@ -62,7 +62,7 @@ class TestStaticFields(TestCase):
         self.assertEqual(test_class.int_field, 4)
 
     def test_long(self):
-        jvm = Jvm.aquire()
+        jvm = Jvm.acquire()
         test_class = self.get_test_class(jvm)
 
         self.assertEqual(test_class.long_field, 4)
@@ -70,7 +70,7 @@ class TestStaticFields(TestCase):
         self.assertEqual(test_class.long_field, 5)
 
     def test_float(self):
-        jvm = Jvm.aquire()
+        jvm = Jvm.acquire()
         test_class = self.get_test_class(jvm)
 
         self.assertEqual(test_class.float_field, 5.0)
@@ -78,7 +78,7 @@ class TestStaticFields(TestCase):
         self.assertEqual(test_class.float_field, 6.25)
 
     def test_double(self):
-        jvm = Jvm.aquire()
+        jvm = Jvm.acquire()
         test_class = self.get_test_class(jvm)
 
         self.assertEqual(test_class.double_field, 6.0)
@@ -86,7 +86,7 @@ class TestStaticFields(TestCase):
         self.assertEqual(test_class.double_field, 7.25)
 
     def test_object(self):
-        jvm = Jvm.aquire()
+        jvm = Jvm.acquire()
         test_class = self.get_test_class(jvm)
 
         obj = test_class.object_field
@@ -101,7 +101,7 @@ class TestStaticFields(TestCase):
         # TODO: test setting object field
 
     def test_string(self):
-        jvm = Jvm.aquire()
+        jvm = Jvm.acquire()
         test_class = self.get_test_class(jvm)
 
         self.assertEqual(test_class.string_field, "Hello World!")
@@ -116,7 +116,7 @@ class TestStaticFields(TestCase):
         test_class.string_field = "Hello World!"
 
     def test_int_array(self):
-        jvm = Jvm.aquire()
+        jvm = Jvm.acquire()
         test_class = self.get_test_class(jvm)
 
         self.assertEqual(len(test_class.int_array_field), 3)
@@ -126,7 +126,7 @@ class TestStaticFields(TestCase):
 
     
     def test_call_with_object_arg(self):
-        jvm = Jvm.aquire()
+        jvm = Jvm.acquire()
         test_class = self.get_test_class(jvm)
 
         obj = test_class(2)

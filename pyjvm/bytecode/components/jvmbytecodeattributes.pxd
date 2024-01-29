@@ -51,6 +51,32 @@ cdef class CodeAttribute(JvmBytecodeAttribute):
     cdef unsigned int render(self, unsigned char* buffer) except 0
     cdef unsigned int size(self) except *
 
+cdef class StackMapFrame:
+    cdef unsigned char frame_type
+
+    cdef unsigned int render(self, unsigned char* buffer) except 0
+    cdef unsigned int size(self) except 0
+
+cdef class VerificationTypeInfo:
+    cdef unsigned char tag
+    cdef unsigned short cpool_index
+
+    cdef unsigned int render(self, unsigned char* buffer) except 0
+    cdef unsigned int size(self) except 0
+
+cdef class AppendFrame(StackMapFrame):
+    cdef unsigned short offset_delta
+    cdef list[VerificationTypeInfo] locals
+
+    cdef unsigned int render(self, unsigned char* buffer) except 0
+    cdef unsigned int size(self) except 0
+
+cdef class StackMapTableAttribute(JvmBytecodeAttribute):
+    cdef list[StackMapFrame] frames
+
+    cdef unsigned int size(self) except 0
+    cdef unsigned int render(self, unsigned char* buffer) except 0
+
 cdef class LineNumberTableAttributeEntry:
     cdef unsigned short start_pc
     cdef unsigned short line_number
@@ -77,6 +103,6 @@ cdef class LocalVariableTypeTableAttributeEntry:
 
 cdef class LocalVariableTypeTableAttribute(JvmBytecodeAttribute):
     cdef list[LocalVariableTypeTableAttributeEntry] entries
- 
+
 
 # TODO StackMapTableAttribute

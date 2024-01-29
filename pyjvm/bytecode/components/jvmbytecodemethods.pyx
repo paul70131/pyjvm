@@ -1,7 +1,7 @@
 from pyjvm.jvm cimport Jvm
 from pyjvm.bytecode.components.jvmbytecodeconstantpool cimport JvmBytecodeConstantPool, JvmBytecodeConstantPoolEntry
 from pyjvm.types.clazz.jvmmethod cimport JvmMethod, JvmMethodSignature
-from pyjvm.bytecode.components.jvmbytecodeattributes cimport JvmBytecodeAttributes, CodeAttribute
+from pyjvm.bytecode.components.jvmbytecodeattributes cimport JvmBytecodeAttributes, CodeAttribute, StackMapTableAttribute
 from pyjvm.c.jni cimport JNIEnv, jobject, jclass
 
 from pyjvm.bytecode.components.base cimport JvmBytecodeComponent
@@ -68,6 +68,7 @@ cdef class JvmBytecodeMethods(JvmBytecodeComponent):
         cdef JvmBytecodeConstantPoolEntry cp_entry
         cdef JvmBytecodeConstantPoolEntry methodref
         cdef CodeAttribute code_attribute
+        cdef StackMapTableAttribute stack_map_table_attribute
         cdef unsigned short max_stack = 0
         cdef unsigned short max_locals = 0
         cdef int arg_count = 0
@@ -75,6 +76,8 @@ cdef class JvmBytecodeMethods(JvmBytecodeComponent):
         cdef unsigned char* bc = <unsigned char*>malloc(1024) 
         cdef JvmMethodLink method_link
         # 1024 bytes should be enough for the bytecode with up to around 100 arguments
+
+        stack_map_table_attribute = StackMapTableAttribute(cp)
 
         cp_name = cp.find_string(name, True)
         cp_descriptor = cp.find_string(descriptor._signature, True)
@@ -90,7 +93,7 @@ cdef class JvmBytecodeMethods(JvmBytecodeComponent):
             if arg == "J" or arg == "D":
                 max_locals += 1
         
-        max_stack = max_locals + 2 # TODO: This is not correct, but it's good enough for now
+        max_stack = max_locals + 3 # TODO: This is not correct, but it's good enough for now
 
         arg_count = len(args)
 
@@ -373,7 +376,7 @@ cdef class JvmBytecodeMethods(JvmBytecodeComponent):
 
             # invokevirtual
             cp_entry = cp.find_methodref("java/lang/Long", "longValue", "()J", True)
-            bc[offset] = 0xB
+            bc[offset] = 0xB6
             bc[offset + 1] = (cp_entry.offset >> 8) & 0xFF
             bc[offset + 2] = cp_entry.offset & 0xFF
             offset += 3
@@ -383,16 +386,6 @@ cdef class JvmBytecodeMethods(JvmBytecodeComponent):
             offset += 1
 
         elif return_type == "F":
-            # dup
-            bc[offset] = 0x59
-            # ifnull # TODO Implement StackMapTable attribute so we can jump
-            bc[offset + 1] = 0xC6
-            branch_offset = 10
-            bc[offset + 2] = (branch_offset >> 8) & 0xFF
-            bc[offset + 3] = branch_offset & 0xFF
-
-            offset += 4
-
 
             # checkcast  #3                  // class java/lang/Float
             cp_entry = cp.find_class("java/lang/Float", True)
@@ -411,13 +404,6 @@ cdef class JvmBytecodeMethods(JvmBytecodeComponent):
             # freturn
             bc[offset] = 0xAE
             offset += 1
-
-            # ifnull branch
-            bc[offset] = 0x57 # pop
-            bc[offset + 1] = 0xb # fconst_0
-            bc[offset + 2] = 0xae # freturn
-
-            offset += 3
 
         elif return_type == "D":
             # checkcast  #3                  // class java/lang/Double
@@ -447,8 +433,8 @@ cdef class JvmBytecodeMethods(JvmBytecodeComponent):
 
 
         code_attribute = CodeAttribute(max_stack, max_locals, bc[:offset], offset, cp)
+        code_attribute.attributes.add(stack_map_table_attribute)
         bc_method.attributes.add(code_attribute)
-    
         free(bc)
 
         self.add(bc_method)

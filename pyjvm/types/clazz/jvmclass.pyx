@@ -7,7 +7,6 @@ from pyjvm.types.clazz.jvmmethod cimport JvmMethodFromJmethodID, JvmMethod
 from pyjvm.types.object.jvmboundfield cimport JvmBoundField
 from pyjvm.types.object.jvmboundmethod cimport JvmBoundMethod
 
-
 from pyjvm.types.clazz.special.jvmstring cimport JvmString
 from pyjvm.types.clazz.special.jvmenum cimport JvmEnum
 from pyjvm.types.clazz.special.jvmexception import JvmException
@@ -169,7 +168,7 @@ class JvmClassMeta(type):
         
         
         bytecodeClass = JvmBytecodeClass.inherit(bases[0], fullname, attrs)
-        return bytecodeClass.insert(bases[0].jvm, bases[0].getClassLoader())
+        return bytecodeClass.insert(bases[0].jvm, bases[0].getClassLoader(), fullname)
 
 
     def __dir__(cls):

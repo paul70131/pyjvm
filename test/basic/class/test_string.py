@@ -13,13 +13,13 @@ class TestString(TestCase):
         except:
             to_load = "test/java/TestStaticFields.java"
             class_file = compile_java(to_load)
-            jvm = Jvm.aquire()
+            jvm = Jvm.acquire()
 
             with open(class_file, 'rb') as f:
                 return jvm.loadClass(f.read())
             
     def test_string(self):
-        jvm = Jvm.aquire()
+        jvm = Jvm.acquire()
 
         jlString = jvm.findClass("java/lang/String")
         string = jlString("A Java String")

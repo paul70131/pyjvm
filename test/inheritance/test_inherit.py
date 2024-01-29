@@ -2,7 +2,7 @@ from unittest import TestCase
 
 from test.utils.java import compile_java
 
-from pyjvm.bytecode.annotations import Int, StaticInt, StaticFloat, Object, StaticObject, StaticBoolean, StaticChar, StaticLong, StaticFloat, StaticDouble, Override
+from pyjvm.bytecode.annotations import Int, StaticInt, StaticFloat, Object, StaticObject, StaticBoolean, StaticChar, StaticLong, StaticFloat, StaticDouble, Override, Method
 
 from pyjvm.jvm import Jvm
 
@@ -13,7 +13,9 @@ class TestAttachCreate(TestCase):
 
     def test_inherit(self):
         
-        jvm = Jvm.aquire()
+        jvm = Jvm.acquire()
+
+        jvm._export_generated_classes = True
 
         TestStaticFields = jvm.findClass("test/java/TestStaticFields")
         String = jvm.findClass("java/lang/String")
@@ -40,8 +42,16 @@ class TestAttachCreate(TestCase):
             
             @Override
             def test_override_args(self, a: int, b: float, c: int, d: bool, e: str): 
-                return None
                 return a + b
+            
+            @Method
+            def method(self) -> int:
+                return 42
+            
+            @Method
+            def __init__(self, a: int):
+                super().__init__()
+                self.new_int = a
             
 
         
@@ -63,5 +73,9 @@ class TestAttachCreate(TestCase):
 
         self.assertEqual(obj.test_override_noargs(), 2)
         self.assertEqual(obj.test_override_args(1, 2.0, 3, True, "Hello World!"), 3.0)
+
+        self.assertEqual(obj.method(), 42)
+        self.assertEqual(obj.method2(1, 2.0, "Hello World!", True), 42)
+        self.assertEqual(obj.method2(1, 2.0, "Hello World!", False), -42)
 
         

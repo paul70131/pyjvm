@@ -3,4 +3,4 @@ from .JvmFieldAnnotation import StaticBoolean, StaticByte, StaticChar, StaticSho
 from .JvmFieldAnnotation import JvmFieldAnnotation
 
 
-from .JvmMethodAnnotation import Override
+from .JvmMethodAnnotation import Override, Method

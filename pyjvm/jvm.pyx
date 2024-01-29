@@ -24,7 +24,7 @@ cdef jobject __invoke_override(Jvm jvm, int override_id, object args):
 
 cdef extern jobject PyjvmBridge__call_override(JNIEnv* jni, jclass cls, jarray args) nogil:
     with gil:
-        jvm = Jvm.aquire()
+        jvm = Jvm.acquire()
         array = CreateJvmArray(jvm, args, "[Ljava/lang/Object;")
         override_id = array[0].intValue()
         return __invoke_override(jvm, override_id, array)
@@ -52,9 +52,10 @@ cdef class Jvm:
         self.__classes = {}
         self.bridge_loaded = False
         self.links = []
+        self._export_generated_classes = False
 
     @staticmethod
-    def aquire() -> Jvm:
+    def acquire() -> Jvm:
         global __instance
         if __instance == None:
             try:
@@ -174,6 +175,7 @@ cdef class Jvm:
     cdef void ensureBridgeLoaded(self) except *:
         cdef JNINativeMethod methods[1]
         cdef jclass bridge_jclass
+
         if not self.bridge_loaded:
             try:
                 bridge = self.findClass("pyjvm/java/PyjvmBridge")
@@ -183,7 +185,7 @@ cdef class Jvm:
                 bridgePath = os.path.join(base, "java", "PyjvmBridge.class")
                 with open(bridgePath, "rb") as f:
                     bytecode = f.read()
-                    bridge = self.loadClass(bytecode, None, False)
+                    bridge = self.loadClass(bytecode, None)
                 
             methods[0].name = "call_override"
             methods[0].signature = "([Ljava/lang/Object;)Ljava/lang/Object;"
