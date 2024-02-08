@@ -14,8 +14,9 @@ cdef class Jvm:
     cdef list[JvmMethodLink] links
     cdef public object _export_generated_classes
 
-    cdef JvmMethodLink newMethodLink(self, object method, JvmMethodSignature signature)
+    cpdef JvmMethodLink newMethodLink(self, object method, JvmMethodSignature signature)
     cpdef void ensure_capability(self, str capability) except *
+    cpdef void raiseException(self, object jvmObject)
 
     cpdef object findClass(self, str name)
 

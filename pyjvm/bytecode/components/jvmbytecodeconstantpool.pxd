@@ -11,15 +11,15 @@ cdef class JvmBytecodeConstantPool(JvmBytecodeComponent):
     cdef unsigned int size(self) except 0
 
 
-    cdef JvmBytecodeConstantPoolEntry find_string(self, str py_string, bint put=?) except *
-    cdef JvmBytecodeConstantPoolEntry find_class(self, str py_class, bint put=?) except *
-    cdef JvmBytecodeConstantPoolEntry find_long(self, long py_long, bint put=?) except *
-    cdef JvmBytecodeConstantPoolEntry find_float(self, float py_float, bint put=?) except *
-    cdef JvmBytecodeConstantPoolEntry find_double(self, double py_double, bint put=?) except *
-    cdef JvmBytecodeConstantPoolEntry find_integer(self, int py_integer, bint put=?) except *
-    cdef JvmBytecodeConstantPoolEntry find_jstring(self, str py_string, bint put=?) except *
-    cdef JvmBytecodeConstantPoolEntry find_name_and_type(self, str name, str type_, bint put=?) except *
-    cdef JvmBytecodeConstantPoolEntry find_methodref(self, str classname, str methodname, str methodtype, bint put=?) except *
+    cpdef JvmBytecodeConstantPoolEntry find_string(self, str py_string, bint put=?) except *
+    cpdef JvmBytecodeConstantPoolEntry find_class(self, str py_class, bint put=?) except *
+    cpdef JvmBytecodeConstantPoolEntry find_long(self, long py_long, bint put=?) except *
+    cpdef JvmBytecodeConstantPoolEntry find_float(self, float py_float, bint put=?) except *
+    cpdef JvmBytecodeConstantPoolEntry find_double(self, double py_double, bint put=?) except *
+    cpdef JvmBytecodeConstantPoolEntry find_integer(self, int py_integer, bint put=?) except *
+    cpdef JvmBytecodeConstantPoolEntry find_jstring(self, str py_string, bint put=?) except *
+    cpdef JvmBytecodeConstantPoolEntry find_name_and_type(self, str name, str type_, bint put=?) except *
+    cpdef JvmBytecodeConstantPoolEntry find_methodref(self, str classname, str methodname, str methodtype, bint put=?) except *
     
     
 

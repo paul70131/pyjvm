@@ -20,7 +20,7 @@ cdef class JvmBytecodeAttributes(JvmBytecodeComponent):
     cdef list[JvmBytecodeAttribute] attributes
 
         
-    cdef add(self, JvmBytecodeAttribute field)
+    cpdef add(self, JvmBytecodeAttribute field)
 
     
 cdef class ConstantValueAttribute(JvmBytecodeAttribute):

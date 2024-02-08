@@ -5,6 +5,7 @@ import dis
 
 def __arg_to_jvm_type(arg, rtype = False):
     from pyjvm.types.clazz.jvmclass import JvmClassMeta
+
     if isinstance(arg, JvmClassMeta):
         return arg.signature
 
@@ -20,10 +21,8 @@ def __arg_to_jvm_type(arg, rtype = False):
         return "Ljava/lang/String;"
     elif arg == bool:
         return "Z"
-    elif arg == object:
-        return "Ljava/lang/Object;"
     else:
-        raise TypeError("Unknown type", arg)
+        return "Lpyjvm/bridge/java/PyObject;"
     
 
 def __parse_signature(func):

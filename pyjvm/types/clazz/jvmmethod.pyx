@@ -16,11 +16,23 @@ from pyjvm.types.array.jvmarray cimport JvmArray, CreateJvmArray
 cdef class JvmMethodSignature:
  #   cdef str _signature
 
+    @property
+    def signature(self):
+        return self._signature
+
     def __init__(self, str signature):
         self._signature = signature
 
     def __str__(self):
         return self._signature
+
+    @property
+    def args(self):
+        return self.parse()[0]
+
+    @property
+    def ret(self):
+        return self.parse()[1]
 
     cdef tuple parse(self):
         cdef list args = []
@@ -93,6 +105,12 @@ cdef class JvmMethod:
 #    cdef str _name
 #    cdef str _signature
 #    cdef int _modifiers
+
+    def hasDescriptor(self, str descriptor):
+        for overload in self._overloads:
+            if overload.signature.signature == descriptor:
+                return True
+        return False
 
 
     @property

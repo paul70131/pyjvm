@@ -25,7 +25,7 @@ cdef class JvmBytecodeAttributes(JvmBytecodeComponent):
     def __init__(self):
         self.attributes = []
         
-    cdef add(self, JvmBytecodeAttribute field):
+    cpdef add(self, JvmBytecodeAttribute field):
         self.attributes.append(field)
 
     cdef int render(self, unsigned char* buffer) except -1:

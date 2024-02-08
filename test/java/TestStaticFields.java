@@ -39,8 +39,8 @@ public class TestStaticFields {
         return true;
     }
 
-    public TestStaticFields(int number) {
-        this.number = number;
+    public TestStaticFields(long number) {
+        this.number = (int) number;
     }
 
 
@@ -55,5 +55,6 @@ public class TestStaticFields {
     public float test_override_args(int a, float b, long c, boolean d, String e) {
         return a + b;
     }
+
 
 }

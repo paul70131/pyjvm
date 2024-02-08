@@ -5,6 +5,8 @@ from pyjvm.types.clazz.special.jvmexception import JvmException
 
 from enum import Enum
 
+import traceback
+
 class JvmException(Exception):
     pass
 
@@ -47,9 +49,12 @@ cdef void JvmExceptionPropagateIfThrown(Jvm jvm) except *:
     cdef JNIEnv* jni = jvm.jni
     cdef jthrowable throwable = jni[0].ExceptionOccurred(jni)
 
+    jvm.ensureBridgeLoaded()
+
     if throwable is not NULL:
         jni[0].ExceptionClear(jni)
         obj = JvmObjectFromJobject(<unsigned long long> throwable, jvm)
+
         raise JvmException(obj)
         #raise Exception("Exception occurred in JVM, cant be propagated to Python yet")
 

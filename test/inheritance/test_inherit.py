@@ -5,13 +5,14 @@ from test.utils.java import compile_java
 from pyjvm.bytecode.annotations import Int, StaticInt, StaticFloat, Object, StaticObject, StaticBoolean, StaticChar, StaticLong, StaticFloat, StaticDouble, Override, Method
 
 from pyjvm.jvm import Jvm
+from pyjvm.types.object.jvmboundmethod import JvmBoundMethod
 
 import os
 
 
 class TestAttachCreate(TestCase):
 
-    def dtest_inherit(self):
+    def test_inherit(self):
         
         jvm = Jvm.acquire()
 
@@ -56,6 +57,7 @@ class TestAttachCreate(TestCase):
         
         _TestInherit = jvm.findClass("test/java/TestInherit")
 
+
         self.assertEqual(_TestInherit.new_static_int, 42)
         _TestInherit.new_static_int = 43
         self.assertEqual(_TestInherit.new_static_int, 43)
@@ -69,6 +71,8 @@ class TestAttachCreate(TestCase):
         self.assertEqual(TestInherit.new_static_double, 42.01)
 
         obj = TestInherit(3)
+
+        self.assertEqual(type(obj.method), JvmBoundMethod)
 
         self.assertEqual(obj.test_override_noargs(), 2)
         self.assertEqual(obj.test_override_args(1, 2.0, 3, True, "Hello World!"), 3.0)

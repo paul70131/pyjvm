@@ -71,7 +71,7 @@ cdef class JvmBytecodeClass:
             if name == "__init__":
                 name = "<init>"
 
-            self.methods.add_new(self.constant_pool, access_flags, name, descriptor, jvm, func)
+            self.methods.add_new(self.constant_pool, access_flags, name, descriptor, jvm, func, klass)
 
             return
 
@@ -89,7 +89,7 @@ cdef class JvmBytecodeClass:
             name = to_override._name
             descriptor = to_override._overloads[0].signature
 
-            self.methods.add_new(self.constant_pool, access_flags, name, descriptor, jvm, func)
+            self.methods.add_new(self.constant_pool, access_flags, name, descriptor, jvm, func, klass)
 
 
             return

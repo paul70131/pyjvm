@@ -162,7 +162,7 @@ cdef class Jvm:
     #cdef list[JvmMethodLink] links
 
 
-    cdef JvmMethodLink newMethodLink(self, object method, JvmMethodSignature signature):
+    cpdef JvmMethodLink newMethodLink(self, object method, JvmMethodSignature signature):
         cdef JvmMethodLink link = JvmMethodLink(len(self.links), method, signature)
         self.links.append(link)
         return link
@@ -214,6 +214,9 @@ cdef class Jvm:
 
         return
 
+    cpdef void raiseException(self, object jvmObject):
+        cdef jobject jobj = <jobject><unsigned long long>jvmObject._jobject
+        self.jni[0].Throw(self.jni, jobj)
 
     @staticmethod
     def create() -> Jvm:
@@ -313,6 +316,7 @@ cdef class Jvm:
                 "pyjvm/bridge/java/PySet",
                 "pyjvm/bridge/java/reference/PyRefHolder",
                 "pyjvm/bridge/java/reference/PyRefQueue",
+                "pyjvm/bridge/java/PyException",
             ]
             for cls in classes:
                 try:

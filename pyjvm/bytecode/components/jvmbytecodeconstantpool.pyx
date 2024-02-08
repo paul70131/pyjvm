@@ -34,6 +34,9 @@ cdef class JvmBytecodeConstantPool(JvmBytecodeComponent):
     def __init__(self):
         self.constant_pool = []
 
+    def get(self, index):
+        return self.constant_pool[index]
+
     cdef unsigned short add(self, JvmBytecodeConstantPoolEntry entry) except *:
         if isinstance(entry, JBCPE_Long) or isinstance(entry, JBCPE_Double):
             self.constant_pool.append(entry)
@@ -47,7 +50,7 @@ cdef class JvmBytecodeConstantPool(JvmBytecodeComponent):
 
     
 
-    cdef JvmBytecodeConstantPoolEntry find_class(self, str py_class, bint put=False) except *:
+    cpdef JvmBytecodeConstantPoolEntry find_class(self, str py_class, bint put=False) except *:
         cdef JvmBytecodeConstantPoolEntry entry
         cdef JvmBytecodeConstantPoolEntry name_entry
 
@@ -69,7 +72,7 @@ cdef class JvmBytecodeConstantPool(JvmBytecodeComponent):
         raise Exception("Class not found in constant pool: %s" % py_class)
 
     
-    cdef JvmBytecodeConstantPoolEntry find_jstring(self, str py_string, bint put=False) except *:
+    cpdef JvmBytecodeConstantPoolEntry find_jstring(self, str py_string, bint put=False) except *:
         cdef JvmBytecodeConstantPoolEntry entry
         cdef JvmBytecodeConstantPoolEntry value_entry
 
@@ -91,7 +94,7 @@ cdef class JvmBytecodeConstantPool(JvmBytecodeComponent):
 
 
 
-    cdef JvmBytecodeConstantPoolEntry find_long(self, long py_long, bint put=False) except *:
+    cpdef JvmBytecodeConstantPoolEntry find_long(self, long py_long, bint put=False) except *:
         cdef JvmBytecodeConstantPoolEntry entry
         cdef JBCPE_Long long_entry
 
@@ -109,7 +112,7 @@ cdef class JvmBytecodeConstantPool(JvmBytecodeComponent):
 
         raise Exception()
 
-    cdef JvmBytecodeConstantPoolEntry find_float(self, float py_float, bint put=False) except *:
+    cpdef JvmBytecodeConstantPoolEntry find_float(self, float py_float, bint put=False) except *:
         cdef JvmBytecodeConstantPoolEntry entry
         cdef JBCPE_Float float_entry
 
@@ -127,7 +130,7 @@ cdef class JvmBytecodeConstantPool(JvmBytecodeComponent):
 
         raise Exception()
 
-    cdef JvmBytecodeConstantPoolEntry find_double(self, double py_double, bint put=False) except *:
+    cpdef JvmBytecodeConstantPoolEntry find_double(self, double py_double, bint put=False) except *:
         cdef JvmBytecodeConstantPoolEntry entry
         cdef JBCPE_Double double_entry
 
@@ -145,7 +148,7 @@ cdef class JvmBytecodeConstantPool(JvmBytecodeComponent):
 
         raise Exception()
 
-    cdef JvmBytecodeConstantPoolEntry find_integer(self, int py_integer, bint put=False) except *:
+    cpdef JvmBytecodeConstantPoolEntry find_integer(self, int py_integer, bint put=False) except *:
         cdef JvmBytecodeConstantPoolEntry entry
         cdef JBCPE_Integer integer_entry
 
@@ -164,7 +167,7 @@ cdef class JvmBytecodeConstantPool(JvmBytecodeComponent):
         raise Exception()
         
 
-    cdef JvmBytecodeConstantPoolEntry find_string(self, str py_string, bint put=False) except *:
+    cpdef JvmBytecodeConstantPoolEntry find_string(self, str py_string, bint put=False) except *:
         cdef JvmBytecodeConstantPoolEntry entry
         cdef JBCPE_Utf8 utf8_entry
         cdef char* string
@@ -186,7 +189,7 @@ cdef class JvmBytecodeConstantPool(JvmBytecodeComponent):
 
         raise Exception("String not found in constant pool: %s" % string)
 
-    cdef JvmBytecodeConstantPoolEntry find_name_and_type(self, str name, str type_, bint put=False) except *:
+    cpdef JvmBytecodeConstantPoolEntry find_name_and_type(self, str name, str type_, bint put=False) except *:
         cdef JvmBytecodeConstantPoolEntry entry
         cdef JvmBytecodeConstantPoolEntry name_entry
         cdef JvmBytecodeConstantPoolEntry type_entry
@@ -209,7 +212,7 @@ cdef class JvmBytecodeConstantPool(JvmBytecodeComponent):
 
         raise Exception(f"NameAndType not found in CP: {name} {type}")
 
-    cdef JvmBytecodeConstantPoolEntry find_methodref(self, str classname, str methodname, str methodtype, bint put=False) except *:
+    cpdef JvmBytecodeConstantPoolEntry find_methodref(self, str classname, str methodname, str methodtype, bint put=False) except *:
         cdef JvmBytecodeConstantPoolEntry entry
         cdef JvmBytecodeConstantPoolEntry class_entry
         cdef JvmBytecodeConstantPoolEntry nt_entry
@@ -292,6 +295,10 @@ cdef class JvmBytecodeConstantPoolEntry:
 #   cdef unsigned byte tag
 #   cdef unsigned short offset
 
+    @property
+    def offset(self):
+        return self.offset
+
     cdef void set_offset(self, unsigned short offset):
         self.offset = offset
 
@@ -309,6 +316,10 @@ cdef class JvmBytecodeConstantPoolEntry:
     
 cdef class JBCPE_Class(JvmBytecodeConstantPoolEntry):
     cdef unsigned short name_index
+
+    @property
+    def name_index(self):
+        return self.name_index
 
     def __init__(self, unsigned short name_idx):
         self.tag = 7
@@ -558,6 +569,9 @@ cdef class JBCPE_NameAndType(JvmBytecodeConstantPoolEntry):
 cdef class JBCPE_Utf8(JvmBytecodeConstantPoolEntry):
     cdef unsigned short length
     cdef unsigned char* bytes
+
+    def __str__(self):
+        return str(self.bytes)
 
     def __init__(self, str py_string = None):
         cdef unsigned char* cb

@@ -65,21 +65,9 @@ cdef jobject convert_to_object(object pyobj, Jvm jvm, str parent=None) except *:
         if pyobj is None:
             return NULL
 
-        #print('convert_to_object', pyobj)
-
         jvm.ensureBridgeLoaded()
-
-        #print('convert_to_object',"loaded bridge")
-
-        # Convert to PyObject
         PyObject = jvm.findClass('pyjvm/bridge/java/PyObject')
-
-        #print('convert_to_object', PyObject)
-
-
-        jobj = PyObject(<long long><void*>pyobj)
-
-        #print('convert_to_object', jobj)
+        jobj = PyObject(<unsigned long long><void*>pyobj)
 
         result = <jobject><unsigned long long>jobj._jobject
 
