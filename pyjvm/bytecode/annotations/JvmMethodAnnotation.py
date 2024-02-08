@@ -25,30 +25,6 @@ def __arg_to_jvm_type(arg, rtype = False):
     else:
         raise TypeError("Unknown type", arg)
     
-def __parse_super_call(func):
-    bc = dis.get_instructions(func)
-    codes = [code for code in bc]
-    print(codes, len(codes))
-
-    if len(codes) < 5:
-        return False
-    
-    if codes[0].opname == "LOAD_GLOBAL" and codes[0].argval == "super":
-        if codes[1].opname == "CALL_FUNCTION":
-            if codes[2].opname == "LOAD_METHOD" and codes[2].argval == "__init__":
-                if codes[3].opname == "CALL_METHOD":
-                    if codes[4].opname == "POP_TOP":
-                        return True
-                    else:
-                        return TypeError("Cannot use the return value of super().__init__()")
-                    
-        raise TypeError("Super call must be to __init__ and be like super().__init__()")
-    
-    for code in bc:
-        if code.opname == "LOAD_GLOBAL" and code.argval == "super":
-            raise TypeError("Cannot use super() in jvm methods")
-    
-    return False
 
 def __parse_signature(func):
     args = []
@@ -79,8 +55,6 @@ def __parse_signature(func):
 
 def Method(func):
     func.__jsignature = __parse_signature(func)
-    func.__jcall_super = __parse_super_call(func)
-    print(func, func.__jcall_super)
     return func
 
 def Override(func):

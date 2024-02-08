@@ -104,6 +104,12 @@ cdef class JvmBytecodeMethods(JvmBytecodeComponent):
 
         # Create bytecode which calls the native method "pyjvm.interface.PyjvmBridge.call_override" with the overload id
 
+        if name == "<init>":
+            pass
+            # aload_0
+
+            # invokespecial # this.super, "<init>", "()V"
+
         # Load argument length onto stack
         cp_entry = cp.find_integer(arg_count, True)
         arg_count_idx = cp_entry.offset

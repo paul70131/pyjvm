@@ -3,6 +3,8 @@ from pyjvm.c.jni cimport jvalue, jboolean, jbyte, jchar, jshort, jint, jlong, jf
 from pyjvm.types.clazz.special.jvmstring cimport JvmString
 from pyjvm.types.clazz.jvmclass cimport JvmClass
 
+from cpython.ref cimport Py_INCREF, Py_DECREF
+
 cdef jboolean convert_to_bool(object pyobj) except *:
     return <jboolean><int>bool(pyobj)
 
@@ -41,8 +43,11 @@ cdef jobject convert_to_object(object pyobj, Jvm jvm, str parent=None) except *:
     if isinstance(pyobj, str):
         javaLangString = jvm.findClass('java/lang/String')
         pyobj = javaLangString(pyobj)
+
+        result = <jobject><unsigned long long>pyobj._jobject
+        return jni[0].NewLocalRef(jni, result)
     
-    if isinstance(pyobj, JvmClass):
+    elif isinstance(pyobj, JvmClass):
         result = <jobject><unsigned long long>pyobj._jobject
 
         if parent:
@@ -55,9 +60,32 @@ cdef jobject convert_to_object(object pyobj, Jvm jvm, str parent=None) except *:
 
 
         return jni[0].NewLocalRef(jni, result)
-    
+
     else:
-        raise ValueError
+        if pyobj is None:
+            return NULL
+
+        #print('convert_to_object', pyobj)
+
+        jvm.ensureBridgeLoaded()
+
+        #print('convert_to_object',"loaded bridge")
+
+        # Convert to PyObject
+        PyObject = jvm.findClass('pyjvm/bridge/java/PyObject')
+
+        #print('convert_to_object', PyObject)
+
+
+        jobj = PyObject(<long long><void*>pyobj)
+
+        #print('convert_to_object', jobj)
+
+        result = <jobject><unsigned long long>jobj._jobject
+
+        return jni[0].NewLocalRef(jni, result)
+    
+    
 
 
 

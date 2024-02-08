@@ -1,18 +1,21 @@
 from pyjvm.c.jni cimport JNI_GetCreatedJavaVMs_t, JNI_CreateJavaVM_t, jint, jsize, JavaVMInitArgs, JNI_VERSION_1_2, JavaVMOption
-from pyjvm.c.jni cimport jsize, jbyte, jclass, jobject, jvalue, jmethodID, JNINativeMethod, jarray
+from pyjvm.c.jni cimport jsize, jbyte, jclass, jobject, jvalue, jmethodID, JNINativeMethod, jarray, jlong, jstring, jboolean, jchar, jshort, jfloat, jdouble
 from pyjvm.c.windows cimport HMODULE, GetModuleHandleA, GetProcAddress, LoadLibraryA
 from pyjvm.c.jvmti cimport JVMTI_VERSION_1_2, jvmtiError, jvmtiEnv, jvmtiPhase, JVMTI_PHASE_DEAD, JVMTI_PHASE_ONLOAD, JVMTI_PHASE_PRIMORDIAL, jvmtiCapabilities
 
 from pyjvm.exceptions.exception import JniException, JvmtiException
 from pyjvm.exceptions.exception cimport JvmExceptionPropagateIfThrown
 
-from pyjvm.types.clazz.jvmclass cimport JvmClassFromJclass, JvmClass
+from pyjvm.types.clazz.jvmclass cimport JvmClassFromJclass, JvmClass, JvmObjectFromJobject
 from pyjvm.types.array.jvmarray cimport CreateJvmArray
 from libc.string cimport memset
+from cpython.ref cimport PyObject, Py_INCREF, Py_DECREF
+from pyjvm.types.converter.typeconverter cimport convert_to_object
 
 import os
 import time
 import faulthandler
+
 
 cdef Jvm __instance = None
 
@@ -29,6 +32,127 @@ cdef extern jobject PyjvmBridge__call_override(JNIEnv* jni, jclass cls, jarray a
         override_id = array[0].intValue()
         return __invoke_override(jvm, override_id, array)
 
+cdef extern void PyjvmPyRefHolder__incref(JNIEnv* jni, jobject this, jlong ptr) nogil:
+    with gil:
+        Py_INCREF(<object><PyObject*>ptr)
+
+cdef extern void PyjvmPyRefHolder__decref(JNIEnv* jni, jobject this, jlong ptr) nogil:
+    with gil:
+        Py_DECREF(<object><PyObject*>ptr)
+
+cdef extern jobject PyjvmPyObject__getAttr(JNIEnv* jni, jobject this, jstring name) nogil:
+    cdef void* ref = NULL
+
+    with gil:
+        jvm = Jvm.acquire()
+        j_this = JvmObjectFromJobject(<unsigned long long>this, jvm)
+        ref = <void*><unsigned long long>j_this._ref
+
+        self = <object>ref
+
+        py_name = JvmObjectFromJobject(<unsigned long long>name, jvm)
+        return convert_to_object(getattr(self, str(py_name)), jvm)
+
+cdef extern jint PyjvmPyObject__toInt(JNIEnv* jni, jobject this) nogil:
+    cdef void* ref = NULL
+
+    with gil:
+        jvm = Jvm.acquire()
+        j_this = JvmObjectFromJobject(<unsigned long long>this, jvm)
+        ref = <void*><unsigned long long>j_this._ref
+
+        self = <object>ref
+        return <int>self
+
+cdef extern jlong PyjvmPyObject__toLong(JNIEnv* jni, jobject this) nogil:
+    cdef void* ref = NULL
+
+    with gil:
+        jvm = Jvm.acquire()
+        j_this = JvmObjectFromJobject(<unsigned long long>this, jvm)
+        ref = <void*><unsigned long long>j_this._ref
+
+        self = <object>ref
+        return <long long>self
+
+cdef extern jdouble PyjvmPyObject__toDouble(JNIEnv* jni, jobject this) nogil:
+    cdef void* ref = NULL
+
+    with gil:
+        jvm = Jvm.acquire()
+        j_this = JvmObjectFromJobject(<unsigned long long>this, jvm)
+        ref = <void*><unsigned long long>j_this._ref
+
+        self = <object>ref
+        return <double>self
+
+cdef extern jboolean PyjvmPyObject__toBoolean(JNIEnv* jni, jobject this) nogil:
+    cdef void* ref = NULL
+
+    with gil:
+        jvm = Jvm.acquire()
+        j_this = JvmObjectFromJobject(<unsigned long long>this, jvm)
+        ref = <void*><unsigned long long>j_this._ref
+
+        self = <object>ref
+        return bool(self)
+
+cdef extern jfloat PyjvmPyObject__toFloat(JNIEnv* jni, jobject this) nogil:
+    cdef void* ref = NULL
+
+    with gil:
+        jvm = Jvm.acquire()
+        j_this = JvmObjectFromJobject(<unsigned long long>this, jvm)
+        ref = <void*><unsigned long long>j_this._ref
+
+        self = <object>ref
+        return <float>self
+
+cdef extern jshort PyjvmPyObject__toShort(JNIEnv* jni, jobject this) nogil:
+    cdef void* ref = NULL
+
+    with gil:
+        jvm = Jvm.acquire()
+        j_this = JvmObjectFromJobject(<unsigned long long>this, jvm)
+        ref = <void*><unsigned long long>j_this._ref
+
+        self = <object>ref
+        return <short>self
+
+cdef extern jbyte PyjvmPyObject__toByte(JNIEnv* jni, jobject this) nogil:
+    cdef void* ref = NULL
+
+    with gil:
+        jvm = Jvm.acquire()
+        j_this = JvmObjectFromJobject(<unsigned long long>this, jvm)
+        ref = <void*><unsigned long long>j_this._ref
+
+        self = <object>ref
+        return <unsigned char>self
+
+cdef extern jchar PyjvmPyObject__toChar(JNIEnv* jni, jobject this) nogil:
+    cdef void* ref = NULL
+
+    with gil:
+        jvm = Jvm.acquire()
+        j_this = JvmObjectFromJobject(<unsigned long long>this, jvm)
+        ref = <void*><unsigned long long>j_this._ref
+
+        self = <object>ref
+        return ord(self)
+
+cdef extern jstring PyjvmPyObject__toString(JNIEnv* jni, jobject this) nogil:
+    cdef void* ref = NULL
+
+    with gil:
+        jvm = Jvm.acquire()
+        j_this = JvmObjectFromJobject(<unsigned long long>this, jvm)
+        ref = <void*><unsigned long long>j_this._ref
+
+        self = <object>ref
+        javaLangString = jvm.findClass("java/lang/String")
+        string = javaLangString(str(self))
+        return <jstring><unsigned long long>string._jobject
 
 cdef class Jvm:
     #cdef JavaVM* jvm
@@ -174,27 +298,107 @@ cdef class Jvm:
 
     cdef void ensureBridgeLoaded(self) except *:
         cdef JNINativeMethod methods[1]
+        cdef JNINativeMethod methods_pyRefHolder[2]
+        cdef JNINativeMethod methods_pyObject[10]
         cdef jclass bridge_jclass
+        cdef jint result
 
         if not self.bridge_loaded:
-            try:
-                bridge = self.findClass("pyjvm/java/PyjvmBridge")
-            except:
-                import pyjvm
-                base = os.path.dirname(pyjvm.__file__)
-                bridgePath = os.path.join(base, "java", "PyjvmBridge.class")
-                with open(bridgePath, "rb") as f:
-                    bytecode = f.read()
-                    bridge = self.loadClass(bytecode, None)
+            # first we load all the classes
+            classes = [
+                "pyjvm/bridge/java/PyjvmBridge",
+                "pyjvm/bridge/java/PyObject",
+                "pyjvm/bridge/java/PyDict",
+                "pyjvm/bridge/java/PyList",
+                "pyjvm/bridge/java/PySet",
+                "pyjvm/bridge/java/reference/PyRefHolder",
+                "pyjvm/bridge/java/reference/PyRefQueue",
+            ]
+            for cls in classes:
+                try:
+                    bridge = self.findClass(cls)
+                except:
+                    import pyjvm
+                    base = os.path.dirname(pyjvm.__file__)
+
+                    parts = cls.split("/")
+                    name = parts[-1]
+                    parts = parts[1:-1]
+
+                    bridgePath = os.path.join(base, *parts, name + ".class")
+                    
+                    with open(bridgePath, "rb") as f:
+                        bytecode = f.read()
+                        bridge = self.loadClass(bytecode, None)
                 
             methods[0].name = "call_override"
             methods[0].signature = "([Ljava/lang/Object;)Ljava/lang/Object;"
             methods[0].fnPtr = <void*>PyjvmBridge__call_override
 
+            bridge = self.findClass("pyjvm/bridge/java/PyjvmBridge")
             bridge_jclass = <jclass><unsigned long long>bridge._jclass
         
-            self.jni[0].RegisterNatives(self.jni, bridge_jclass, methods, 1)
+            result = self.jni[0].RegisterNatives(self.jni, bridge_jclass, methods, 1)
             JvmExceptionPropagateIfThrown(self)
+            if result != 0:
+                raise Exception("Could not register native methods", result)
+
+            methods_pyRefHolder[0].name = "_incref"
+            methods_pyRefHolder[0].signature = "(J)V"
+            methods_pyRefHolder[0].fnPtr = <void*>PyjvmPyRefHolder__incref
+            methods_pyRefHolder[1].name = "_decref"
+            methods_pyRefHolder[1].signature = "(J)V"
+            methods_pyRefHolder[1].fnPtr = <void*>PyjvmPyRefHolder__decref
+
+            bridge = self.findClass("pyjvm/bridge/java/reference/PyRefHolder")
+            bridge_jclass = <jclass><unsigned long long>bridge._jclass
+
+            result = self.jni[0].RegisterNatives(self.jni, bridge_jclass, methods_pyRefHolder, 2)
+            JvmExceptionPropagateIfThrown(self)
+            if result != 0:
+                raise Exception("Could not register native methods", result)
+
+            methods_pyObject[0].name = "getAttr"
+            methods_pyObject[0].signature = "(Ljava/lang/String;)Lpyjvm/bridge/java/PyObject;"
+            methods_pyObject[0].fnPtr = <void*>PyjvmPyObject__getAttr
+            methods_pyObject[1].name = "toInt"
+            methods_pyObject[1].signature = "()I"
+            methods_pyObject[1].fnPtr = <void*>PyjvmPyObject__toInt
+            methods_pyObject[2].name = "toLong"
+            methods_pyObject[2].signature = "()J"
+            methods_pyObject[2].fnPtr = <void*>PyjvmPyObject__toLong
+            methods_pyObject[3].name = "toDouble"
+            methods_pyObject[3].signature = "()D"
+            methods_pyObject[3].fnPtr = <void*>PyjvmPyObject__toDouble
+            methods_pyObject[4].name = "toBoolean"
+            methods_pyObject[4].signature = "()Z"
+            methods_pyObject[4].fnPtr = <void*>PyjvmPyObject__toBoolean
+            methods_pyObject[5].name = "toFloat"
+            methods_pyObject[5].signature = "()F"
+            methods_pyObject[5].fnPtr = <void*>PyjvmPyObject__toFloat
+            methods_pyObject[6].name = "toShort"
+            methods_pyObject[6].signature = "()S"
+            methods_pyObject[6].fnPtr = <void*>PyjvmPyObject__toShort
+            methods_pyObject[7].name = "toByte"
+            methods_pyObject[7].signature = "()B"
+            methods_pyObject[7].fnPtr = <void*>PyjvmPyObject__toByte
+            methods_pyObject[8].name = "toChar"
+            methods_pyObject[8].signature = "()C"
+            methods_pyObject[8].fnPtr = <void*>PyjvmPyObject__toChar
+            methods_pyObject[9].name = "toString"
+            methods_pyObject[9].signature = "()Ljava/lang/String;"
+            methods_pyObject[9].fnPtr = <void*>PyjvmPyObject__toString
+
+            bridge = self.findClass("pyjvm/bridge/java/PyObject")
+            bridge_jclass = <jclass><unsigned long long>bridge._jclass
+
+
+            result = self.jni[0].RegisterNatives(self.jni, bridge_jclass, methods_pyObject, 10)
+
+            JvmExceptionPropagateIfThrown(self)
+            if result != 0:
+                raise Exception("Could not register native methods", result)
+
             self.bridge_loaded = True
             
 
@@ -203,7 +407,7 @@ cdef class Jvm:
     cpdef object findClass(self, str name):
         if name in self.__classes:
             return self.__classes[name]
-
+    
         cdef jclass cls = self.jni[0].FindClass(self.jni, name.encode("utf-8"))
         JvmExceptionPropagateIfThrown(self)
 

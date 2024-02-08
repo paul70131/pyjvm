@@ -70,7 +70,6 @@ cdef class JvmBytecodeClass:
             name = func.__name__
             if name == "__init__":
                 name = "<init>"
-                call_super = getattr(func, "__jcall_super", False)
 
             self.methods.add_new(self.constant_pool, access_flags, name, descriptor, jvm, func)
 

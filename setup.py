@@ -122,10 +122,26 @@ JAVA_HOME = os.environ.get("JAVA_HOME", None)
 
 # Compile java files
 
-for f in os.listdir("pyjvm/java"):
-    if f.endswith(".java"):
-        subprocess.check_call(["javac", f"pyjvm/java/{f}"])
+j_classes = []
+for f in os.walk("pyjvm/bridge/java"):
+    for file in f[2]:
+        if file.endswith(".java"):
+            j_classes.append(f"{f[0]}/{file}")
 
+r = subprocess.run(["javac", *j_classes], capture_output=True)
+err = r.stderr.decode("utf-8")
+if err:
+    print(err)
+    raise Exception("Failed to compile java files", err)
+            
+for f in os.walk("pyjvm/bridge/scala"):
+    for file in f[2]:
+        if file.endswith(".scala"):
+            r = subprocess.run(["scalac", "-d", "pyjvm/bridge/scala", f"{f[0]}/{file}"], capture_output=True)
+            err = r.stderr.decode("utf-8")
+            if err:
+                print(err)
+                raise Exception("Failed to compile scala files", err)
 
 setup(
     name='pyjvm',

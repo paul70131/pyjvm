@@ -1,5 +1,7 @@
 package test.java;
 
+import pyjvm.bridge.java.PyObject;
+
 
 public class TestStaticMethods {
 /*    public static boolean bool_field = true;
@@ -73,6 +75,10 @@ public class TestStaticMethods {
 
     public static void throws_method() throws Exception {
         throw new Exception();
+    }
+
+    public static int get_int(PyObject obj, String name) {
+        return obj.getAttr(name).toInt();
     }
 
 }

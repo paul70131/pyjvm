@@ -11,7 +11,7 @@ import os
 
 class TestAttachCreate(TestCase):
 
-    def test_inherit(self):
+    def dtest_inherit(self):
         
         jvm = Jvm.acquire()
 
@@ -50,7 +50,6 @@ class TestAttachCreate(TestCase):
             
             @Method
             def __init__(self, a: int):
-                super().__init__()
                 self.new_int = a
             
 

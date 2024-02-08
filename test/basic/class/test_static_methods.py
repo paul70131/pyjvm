@@ -90,3 +90,16 @@ class TestStaticMethods(TestCase):
 
         with self.assertRaises(Exception):
             test_class.throws_method()
+
+    def test_pyobject(self):
+        jvm = Jvm.acquire()
+        test_class = self.get_test_class(jvm)
+
+        class TestPyObject:
+            def __init__(self, value):
+                self.value = value
+            
+        
+        tobj = TestPyObject(123)
+        i = test_class.get_int(tobj, "value")
+        self.assertEqual(i, 123)

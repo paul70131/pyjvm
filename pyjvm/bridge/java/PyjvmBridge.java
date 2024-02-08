@@ -1,6 +1,10 @@
-package pyjvm.java;
+package pyjvm.bridge.java;
+
+import java.lang.ref.Cleaner;
 
 public class PyjvmBridge {
+
+    public static Cleaner cleaner = Cleaner.create();
 
     public boolean example_bool_override() {
         call_override((short) 42);
@@ -21,7 +25,7 @@ public class PyjvmBridge {
     }
 
     public PyjvmBridge() {
-        System.out.println("PyjvmBridge.<init>");
+        call_override((short) 42, "TEST");
     }
     
     public static native Object call_override(Object ... args);
