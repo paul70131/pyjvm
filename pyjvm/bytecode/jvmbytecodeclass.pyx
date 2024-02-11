@@ -28,7 +28,7 @@ cdef class JvmBytecodeClass:
         #self.parse_attributes()
 
     @staticmethod
-    def inherit(object klass, str name, attrs):
+    def inherit(object klass, str name, attrs, list interfaces):
 
         cf = JvmBytecodeClass()
 
@@ -36,7 +36,7 @@ cdef class JvmBytecodeClass:
         cf.inherit_cp(klass)
         cf.inherit_access_flags(klass)
         cf.inherit_this_super(klass, name)
-        cf.inherit_interfaces(klass)
+        cf.inherit_interfaces(klass, interfaces)
 
         cf.inherit_fields(klass, attrs)
         cf.inherit_methods(klass, attrs)
@@ -138,12 +138,12 @@ cdef class JvmBytecodeClass:
 
 
 
-    def inherit_interfaces(self, object klass):
-        self.interfaces = JvmBytecodeInterfaces()
+    def inherit_interfaces(self, object klass, list interfaces):
+        self.interfaces = JvmBytecodeInterfaces(interfaces, self.constant_pool)
     
     def inherit_version(self, object klass):
         cdef Jvm jvm = klass.jvm
-        cdef JNIEnv* env = jvm.jni
+        cdef JNIEnv* env = jvm.getEnv()
         cdef jvmtiEnv* jvmti = jvm.jvmti
         cdef jclass cls = <jclass><unsigned long long>klass._jclass
 
@@ -164,7 +164,7 @@ cdef class JvmBytecodeClass:
         
     def inherit_access_flags(self, object klass):
         cdef Jvm jvm = klass.jvm
-        cdef JNIEnv* env = jvm.jni
+        cdef JNIEnv* env = jvm.getEnv()
         cdef jvmtiEnv* jvmti = jvm.jvmti
         cdef jclass cls = <jclass><unsigned long long>klass._jclass
 

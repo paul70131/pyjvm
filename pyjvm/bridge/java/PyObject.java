@@ -17,8 +17,6 @@ public class PyObject extends PyRefHolder {
     public native PyObject setAttr(String name, boolean value);
     public native PyObject setAttr(String name, String value);
 
-    @Override
-    public native int hashCode();
 
     @Override
     public native boolean equals(Object obj);

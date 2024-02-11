@@ -5,8 +5,8 @@ from pyjvm.jvm cimport Jvm
 # JvmField is always static, for instance fields, use JvmBoundField which uses JvmField in the background
 cdef class JvmField:
     cdef jfieldID _fid
-    cdef str _name
-    cdef str _signature
+    cdef char* _name
+    cdef char* _signature
     cdef int _modifiers
     cdef object _clazz
 
@@ -21,7 +21,7 @@ cdef class JvmField:
     cdef object get_float(self, JNIEnv* env, jclass clazz, jfieldID fid, Jvm jvm)
     cdef object get_double(self, JNIEnv* env, jclass clazz, jfieldID fid, Jvm jvm)
     cdef object get_object(self, JNIEnv* env, jclass clazz, jfieldID fid, Jvm jvm)
-    cdef object get_array(self, JNIEnv* env, jclass clazz, jfieldID fid, str signature, Jvm jvm)
+    cdef object get_array(self, JNIEnv* env, jclass clazz, jfieldID fid, char* signature, Jvm jvm)
 
     cpdef void set(self, object clazz, object value) except *
 

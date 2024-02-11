@@ -1,6 +1,7 @@
 from pyjvm.types.clazz.jvmmethod cimport JvmMethodSignature
 from pyjvm.types.clazz.special.jvmexception import JvmException
 
+
 cdef class JvmMethodLink:
     #cdef int link_id
     #cdef object method
@@ -46,6 +47,7 @@ cdef class JvmMethodLink:
     cdef jobject invoke(self, Jvm jvm, object args):
         cdef list py_args
         cdef jobject return_jobj
+        cdef JNIEnv* jni = jvm.getEnv()
         try:
             arg_types, ret_type = self.signature.parse()
 
@@ -91,7 +93,7 @@ cdef class JvmMethodLink:
                 return <jobject><unsigned long long>0
 
             return_jobj = <jobject><unsigned long long>r_obj._jobject
-            return_jobj = jvm.jni[0].NewLocalRef(jvm.jni, return_jobj)
+            return_jobj = jni[0].NewLocalRef(jni, return_jobj)
             return return_jobj
         except Exception as e:
             if isinstance(e, JvmException):

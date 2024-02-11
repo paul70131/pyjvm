@@ -7,7 +7,7 @@ from pyjvm.c.jvmti cimport jvmtiEnv
 from libc.stdlib cimport malloc, free
 
 from pyjvm.types.converter.typeconverter cimport convert_to_java
-from pyjvm.types.signature import JvmSignature
+from pyjvm.types.signature cimport JVM_SIG_VOID, JVM_SIG_BOOLEAN, JVM_SIG_BYTE, JVM_SIG_CHAR, JVM_SIG_DOUBLE, JVM_SIG_FLOAT, JVM_SIG_INT, JVM_SIG_LONG, JVM_SIG_SHORT, JVM_SIG_CLASS, JVM_SIG_ARRAY
 from pyjvm.exceptions.exception cimport JvmExceptionPropagateIfThrown
 from pyjvm.types.clazz.jvmmethod cimport JvmMethod, JvmMethodReference
 
@@ -120,39 +120,39 @@ cdef class JvmBoundMethod:
         
         return JvmObjectFromJobject(<unsigned long long> ret, jvm)
 
-    cdef object call_array(self, JNIEnv* jni, jobject obj, jmethodID method_id, jvalue* args, Jvm jvm, str signature):
+    cdef object call_array(self, JNIEnv* jni, jobject obj, jmethodID method_id, jvalue* args, Jvm jvm, char* signature):
         cdef jarray value
         value = jni[0].CallObjectMethodA(jni, obj, method_id, args)
         JvmExceptionPropagateIfThrown(jvm)
         return CreateJvmArray(jvm, value, signature)
 
-    cdef object call(self, jmethodID mid,  jvalue* args, str return_type):
+    cdef object call(self, jmethodID mid,  jvalue* args, char* return_type):
         cdef Jvm jvm = self.obj.__class__.jvm
-        cdef JNIEnv* env = jvm.jni
+        cdef JNIEnv* env = jvm.getEnv()
         cdef jobject cid = <jobject><unsigned long long>self.obj._jobject
         cdef object value
 
-        if return_type == JvmSignature.VOID:
+        if return_type[0] == JVM_SIG_VOID:
             return self.call_void(env, cid, mid, args, jvm)
-        if return_type == JvmSignature.BOOLEAN:
+        if return_type[0] == JVM_SIG_BOOLEAN:
             return self.call_boolean(env, cid, mid, args, jvm)
-        elif return_type == JvmSignature.BYTE:
+        elif return_type[0] == JVM_SIG_BYTE:
             return self.call_byte(env, cid, mid, args, jvm)
-        elif return_type == JvmSignature.CHAR:
+        elif return_type[0] == JVM_SIG_CHAR:
             return self.call_char(env, cid, mid, args, jvm)
-        elif return_type == JvmSignature.DOUBLE:
+        elif return_type[0] == JVM_SIG_DOUBLE:
             return self.call_double(env, cid, mid, args, jvm)
-        elif return_type == JvmSignature.FLOAT:
+        elif return_type[0] == JVM_SIG_FLOAT:
             return self.call_float(env, cid, mid, args, jvm)
-        elif return_type == JvmSignature.INT:
+        elif return_type[0] == JVM_SIG_INT:
             return self.call_int(env, cid, mid, args, jvm)
-        elif return_type == JvmSignature.LONG:
+        elif return_type[0] == JVM_SIG_LONG:
             return self.call_long(env, cid, mid, args, jvm)
-        elif return_type == JvmSignature.SHORT:
+        elif return_type[0] == JVM_SIG_SHORT:
             return self.call_short(env, cid, mid, args, jvm)
-        elif return_type[0] == JvmSignature.CLASS:
+        elif return_type[0] == JVM_SIG_CLASS:
             return self.call_object(env, cid, mid, args, jvm)
-        elif return_type[0] == JvmSignature.ARRAY:
+        elif return_type[0] == JVM_SIG_ARRAY:
             return self.call_array(env, cid, mid, args, jvm, return_type)
         
         raise TypeError("Unknown return type " + return_type)
@@ -183,21 +183,7 @@ cdef class JvmBoundMethod:
         
 
     def __repr__(self):
-        name = ""
-        if self.public:
-            name += "public "
-        elif self.protected:
-            name += "protected "
-        elif self.private:
-            name += "private "
-        if self.static:
-            name += "static "
-        if self.final:
-            name += "final "
-        if self.abstract:
-            name += "abstract "
-        name += self.signature + " " + self._name
-        return name
+        return self.method.__repr__()
     
     def __init__(self, JvmMethod method, object obj):
         self.method = method

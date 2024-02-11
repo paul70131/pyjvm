@@ -30,7 +30,7 @@ cdef class JvmClass:
     def from_cid(self, unsigned long long cid):
         cdef jclass jcid = <jclass>cid
         cdef Jvm jvm = <Jvm>self.__class__.jvm
-        cdef JNIEnv* jni = jvm.jni
+        cdef JNIEnv* jni = jvm.getEnv()
 
         self._jobject = jni[0].NewGlobalRef(jni, jcid)
         jni[0].DeleteLocalRef(jni, jcid)
@@ -38,7 +38,7 @@ cdef class JvmClass:
     def __init__(self, *args, unsigned long long cid = 0):
         cdef jobject ret
         cdef Jvm jvm = <Jvm>self.__class__.jvm
-        cdef JNIEnv* jni = jvm.jni
+        cdef JNIEnv* jni = jvm.getEnv()
         cdef jclass class_id = <jclass><unsigned long long>self.__class__._jclass
         cdef JvmMethod constructor
         cdef jvalue* jargs
@@ -48,7 +48,7 @@ cdef class JvmClass:
         if cid != 0:
             self.from_cid(cid)
             return
-        
+
         constructor = getattr(self, "<init>", None)
 
         for overload in constructor._overloads:
@@ -56,6 +56,7 @@ cdef class JvmClass:
             if jargs == NULL:
                 continue
 
+            
             _, ret_type = overload.signature.parse()
 
             mid = overload._method_id
@@ -75,7 +76,7 @@ cdef class JvmClass:
 
     def __del__(self):
         cdef Jvm jvm = <Jvm>self.__class__.jvm
-        cdef JNIEnv* jni = jvm.jni
+        cdef JNIEnv* jni = jvm.getEnv()
 
         if self._jobject != NULL:
             jni[0].DeleteGlobalRef(jni, self._jobject)
@@ -92,10 +93,34 @@ cdef class JvmClass:
         return False
 
     def __dir__(self):
+        members = set()
+        cls = self.__class__
+        while cls and isinstance(cls, JvmClassMeta):
+            if not cls._loaded:
+                cls.load()
+            members.update(f for f in cls._fields.keys() if not cls._fields[f].static)
+            members.update(f for f in cls._methods.keys() if not cls._methods[f].static)
+            cls = cls.__bases__[0]
+        
+        return members
+
+    def __setattr__(self, name, value):
+        cdef JvmBoundField boundField
+        if name in self.__class__.members:
+            super().__setattr__(name, value)
+            return
+        
         if not self.__class__._loaded:
             self.__class__.load()
-        members = {**self.__class__._fields, **self.__class__._methods}
-        return [m.name for m in members.values() if not m.static]
+
+        attr = self.__class__._fields.get(name, None)
+        if not attr or attr.static:
+            raise AttributeError(f"{self.__class__.__name__} has no attribute {name}")
+
+        if attr and isinstance(attr, JvmField): # always true
+            boundField = JvmBoundField(attr, self)
+            boundField.set(value)
+        return
 
     def __getattr__(self, name):
         cls = self.__class__
@@ -135,7 +160,7 @@ class JvmClassMeta(type):
 
     def __del__(self):
         cdef Jvm jvm = <Jvm>self.jvm
-        cdef JNIEnv* jni = jvm.jni
+        cdef JNIEnv* jni = jvm.getEnv()
         jni[0].DeleteGlobalRef(jni, <jobject><unsigned long long>self._jclass)
 
     def __new__(cls, name, bases, attrs):
@@ -165,10 +190,14 @@ class JvmClassMeta(type):
         package = attrs.get("package", None)
         fullname = f"{package}.{name}" if package else name
 
+        cl = None
+        for base in bases:
+            if cl:
+                break
+            cl = base.getClassLoader()
         
-        
-        bytecodeClass = JvmBytecodeClass.inherit(bases[0], fullname, attrs)
-        return bytecodeClass.insert(bases[0].jvm, bases[0].getClassLoader(), fullname)
+        bytecodeClass = JvmBytecodeClass.inherit(bases[0], fullname, attrs, list(bases[1:]) if len(bases) > 1 else [])
+        return bytecodeClass.insert(bases[0].jvm, cl, fullname)
 
 
     def __dir__(cls):
@@ -261,7 +290,7 @@ class JvmClassMeta(type):
     def load(cls):
         cdef Jvm jvm = <Jvm>cls.jvm
         cdef jvmtiEnv* jvmti = jvm.jvmti
-        cdef JNIEnv* jni = jvm.jni
+        cdef JNIEnv* jni = jvm.getEnv()
         cdef jint error
         cdef jclass cid = <jclass><unsigned long long>cls._jclass
 
@@ -303,7 +332,7 @@ class JvmClassMeta(type):
 
 cdef object JvmObjectFromJobject(unsigned long long jobj, Jvm jvm):
     cdef jclass cid
-    cdef JNIEnv* jni = jvm.jni
+    cdef JNIEnv* jni = jvm.getEnv()
 
     if jobj == 0:
         return None
@@ -315,7 +344,7 @@ cdef object JvmObjectFromJobject(unsigned long long jobj, Jvm jvm):
 cdef object JvmClassFromJclass(unsigned long long cid, Jvm jvm, object top_base=JvmClass):
     cdef char* name
     cdef jvmtiEnv* jvmti = jvm.jvmti
-    cdef JNIEnv* jni = jvm.jni
+    cdef JNIEnv* jni = jvm.getEnv()
     cdef jint error
     cdef jclass superclass
     cdef jclass new_cid

@@ -18,7 +18,7 @@ cdef class JvmMethod:
     cdef int _modifiers
     cdef object _clazz
 
-    cdef object call(self, jmethodID mid, jvalue* args, str return_type)
+    cdef object call(self, jmethodID mid, jvalue* args, char* return_type)
 
     cdef object call_void(self, JNIEnv* jni, jclass clazz, jmethodID method_id, jvalue* args, Jvm jvm)
     cdef object call_boolean(self, JNIEnv* jni, jclass clazz, jmethodID method_id, jvalue* args, Jvm jvm)
@@ -30,6 +30,6 @@ cdef class JvmMethod:
     cdef object call_float(self, JNIEnv* jni, jclass clazz, jmethodID method_id, jvalue* args, Jvm jvm)
     cdef object call_double(self, JNIEnv* jni, jclass clazz, jmethodID method_id, jvalue* args, Jvm jvm)
     cdef object call_object(self, JNIEnv* jni, jclass clazz, jmethodID method_id, jvalue* args, Jvm jvm)
-    cdef object call_array(self, JNIEnv* jni, jclass clazz, jmethodID method_id, jvalue* args, Jvm jvm, str signature)
+    cdef object call_array(self, JNIEnv* jni, jclass clazz, jmethodID method_id, jvalue* args, Jvm jvm, char* signature)
 
 cdef JvmMethodFromJmethodID(jmethodID fid, jclass cid, object clazz)

@@ -4,6 +4,7 @@ import warnings
 from setuptools import setup, Extension, find_packages
 
 from Cython.Build import cythonize
+import Cython.Compiler.Options
 
 import platform
 import os
@@ -122,6 +123,7 @@ JAVA_HOME = os.environ.get("JAVA_HOME", None)
 
 # Compile java files
 
+Cython.Compiler.Options.annotate = True
 j_classes = []
 for f in os.walk("pyjvm/bridge/java"):
     for file in f[2]:
@@ -146,8 +148,8 @@ for f in os.walk("pyjvm/bridge/scala"):
 setup(
     name='pyjvm',
     description="Python Bindings for the JVM (jni & jvmti)",
-    ext_modules=cythonize(extensions, language_level=3, build_dir="build/c"),
-    packages=find_packages(".") + ["pyjvm.java"],
+    ext_modules=cythonize(extensions, language_level=3, build_dir="build/c", annotate=True),
+    packages=find_packages(".") + ["pyjvm.bridge"],
     package_dir={'pyjvm': 'pyjvm'},
     #b
     include_dirs=[
@@ -155,9 +157,9 @@ setup(
         JAVA_HOME + "/include/win32",
     ],
     package_data={
-        "pyjvm.java": ["**/*.class"],
+        "pyjvm.bridge": ["**/*.class"],
     },
     zip_safe=False,
-    version='0.0.2',
+    version='0.1.0',
     author="Paul K."
 )

@@ -6,15 +6,23 @@ from pyjvm.c.jvmti cimport JVMTI_VERSION_1_2, jvmtiError, jvmtiEnv, jvmtiPhase, 
 from pyjvm.exceptions.exception import JniException, JvmtiException
 from pyjvm.exceptions.exception cimport JvmExceptionPropagateIfThrown
 
+from pyjvm.types.clazz.special.jvmexception import JvmException
 from pyjvm.types.clazz.jvmclass cimport JvmClassFromJclass, JvmClass, JvmObjectFromJobject
 from pyjvm.types.array.jvmarray cimport CreateJvmArray
 from libc.string cimport memset
 from cpython.ref cimport PyObject, Py_INCREF, Py_DECREF
 from pyjvm.types.converter.typeconverter cimport convert_to_object
 
+from libc.stdlib cimport malloc, free
+
+
 import os
+import sys
 import time
+import threading
 import faulthandler
+
+
 
 
 cdef Jvm __instance = None
@@ -28,7 +36,7 @@ cdef jobject __invoke_override(Jvm jvm, int override_id, object args):
 cdef extern jobject PyjvmBridge__call_override(JNIEnv* jni, jclass cls, jarray args) nogil:
     with gil:
         jvm = Jvm.acquire()
-        array = CreateJvmArray(jvm, args, "[Ljava/lang/Object;")
+        array = CreateJvmArray(jvm, args, b"[Ljava/lang/Object;")
         override_id = array[0].intValue()
         return __invoke_override(jvm, override_id, array)
 
@@ -42,6 +50,7 @@ cdef extern void PyjvmPyRefHolder__decref(JNIEnv* jni, jobject this, jlong ptr) 
 
 cdef extern jobject PyjvmPyObject__getAttr(JNIEnv* jni, jobject this, jstring name) nogil:
     cdef void* ref = NULL
+    cdef jobject obj_ref = NULL
 
     with gil:
         jvm = Jvm.acquire()
@@ -50,8 +59,16 @@ cdef extern jobject PyjvmPyObject__getAttr(JNIEnv* jni, jobject this, jstring na
 
         self = <object>ref
 
-        py_name = JvmObjectFromJobject(<unsigned long long>name, jvm)
-        return convert_to_object(getattr(self, str(py_name)), jvm)
+        j_name = JvmObjectFromJobject(<unsigned long long>name, jvm)
+        py_name = str(j_name)
+        PyObject = jvm.findClass('pyjvm/bridge/java/PyObject')
+        py_attr = getattr(self, py_name)
+        jobj = PyObject(<unsigned long long><void*>py_attr)
+        obj_ref = <jobject><unsigned long long>jobj._jobject
+        obj_ref = jni[0].NewLocalRef(jni, obj_ref)
+        _ = py_attr # keep a reference to the object
+        _ = jobj
+        return obj_ref
 
 cdef extern jint PyjvmPyObject__toInt(JNIEnv* jni, jobject this) nogil:
     cdef void* ref = NULL
@@ -143,6 +160,7 @@ cdef extern jchar PyjvmPyObject__toChar(JNIEnv* jni, jobject this) nogil:
 
 cdef extern jstring PyjvmPyObject__toString(JNIEnv* jni, jobject this) nogil:
     cdef void* ref = NULL
+    cdef jobject obj_ref = NULL
 
     with gil:
         jvm = Jvm.acquire()
@@ -152,7 +170,9 @@ cdef extern jstring PyjvmPyObject__toString(JNIEnv* jni, jobject this) nogil:
         self = <object>ref
         javaLangString = jvm.findClass("java/lang/String")
         string = javaLangString(str(self))
-        return <jstring><unsigned long long>string._jobject
+        obj_ref = <jobject><unsigned long long>string._jobject
+        obj_ref = jni[0].NewLocalRef(jni, obj_ref)
+        return obj_ref
 
 cdef class Jvm:
     #cdef JavaVM* jvm
@@ -160,6 +180,7 @@ cdef class Jvm:
     #cdef jvmtiEnv* jvmti
     #cdef public dict __classes
     #cdef list[JvmMethodLink] links
+    #cdef dict[int, unsigned long long] envs
 
 
     cpdef JvmMethodLink newMethodLink(self, object method, JvmMethodSignature signature):
@@ -167,19 +188,42 @@ cdef class Jvm:
         self.links.append(link)
         return link
 
+    cdef JNIEnv* getEnv(self) except NULL:
+        tid = threading.get_native_id()
+        if tid in self.envs:
+            return <JNIEnv*><unsigned long long>self.envs[tid]
+        else:
+            return self.initNewEnv()
+    
+    cdef JNIEnv* initNewEnv(self) except NULL:
+        cdef JNIEnv* jni
+        cdef jint err
+        cdef JavaVM* jvm = self.jvm
+        cdef jint version = JNI_VERSION_1_2
+        cdef JNIEnv* env = NULL
+
+        err = jvm[0].AttachCurrentThread(jvm, <void**>&env, NULL)
+        if err != 0:
+            raise JniException(err, "Could not attach to Java VM")
+
+        self.envs[threading.get_native_id()] = <unsigned long long>env
+        return env
+
+
     def __cinit__(self):
         global __instance
         __instance = self
         self.jvm = NULL
-        self.jni = NULL
         self.jvmti = NULL
         self.__classes = {}
         self.bridge_loaded = False
         self.links = []
         self._export_generated_classes = False
+        self.envs = {}
 
     @staticmethod
     def acquire() -> Jvm:
+        cdef Jvm jvm = None
         global __instance
         if __instance == None:
             try:
@@ -215,11 +259,14 @@ cdef class Jvm:
         return
 
     cpdef void raiseException(self, object jvmObject):
+        cdef JNIEnv* jni = self.getEnv()
         cdef jobject jobj = <jobject><unsigned long long>jvmObject._jobject
-        self.jni[0].Throw(self.jni, jobj)
+        cdef jobject new_ref = jni[0].NewLocalRef(jni, jobj)
+        _ = jobj
+        jni[0].Throw(jni, new_ref)
 
     @staticmethod
-    def create() -> Jvm:
+    def create(**kwargs) -> Jvm:
         cdef Jvm result = None
         cdef JavaVM* jvm
         cdef JNIEnv* jni
@@ -227,23 +274,35 @@ cdef class Jvm:
         cdef jint err = 0
         cdef jsize nVMs = 0
         cdef JavaVMInitArgs args
-        cdef JavaVMOption options[1]
+        cdef JavaVMOption* options = <JavaVMOption*>malloc(sizeof(JavaVMOption) * len(kwargs))
+        opts = []
 
-        options[0].optionString = "-Xcheck:jni"
-        options[0].extraInfo = NULL
+        for i, (key, value) in enumerate(kwargs.items()):
+            if not value:
+                opt = f"-{key}".encode("utf-8")
+            else:
+                opt = f"-D{key}={value}".encode("utf-8")
+            opts.append(JavaVMOption())
+
+            options[i].optionString = <char*>opt
+            options[i].extraInfo = NULL
 
         args.version = JNI_VERSION_1_2
-        args.nOptions = 1
+        args.nOptions = len(kwargs)
         args.options = options
         args.ignoreUnrecognized = 0
         
         err = _JNI_GetCreatedJavaVMs(&jvm, 1, &nVMs)
         if err != 0:
+            free(options)
             raise JniException(err, "Could not get created Java VMs")
         if nVMs != 0:
+            free(options)
             raise JniException(0, "Java VM already exists, use attach() instead")
 
         err = _JNI_CreateJavaVM(&jvm, &jni, &args)
+        free(options)
+        _ = opts # keep a reference to the options
 
         if err != 0:
             raise JniException(err, "Could not create Java VM")
@@ -255,7 +314,7 @@ cdef class Jvm:
 
         result = Jvm()
         result.jvm = jvm
-        result.jni = jni
+        result.envs[threading.get_native_id()] = <unsigned long long>jni
         result.jvmti = jvmti
 
         __instance = result
@@ -292,7 +351,7 @@ cdef class Jvm:
 
         result = Jvm()
         result.jvm = jvm
-        result.jni = jni
+        result.envs[threading.get_native_id()] = <unsigned long long>jni
         result.jvmti = jvmti
 
         __instance = result
@@ -305,19 +364,24 @@ cdef class Jvm:
         cdef JNINativeMethod methods_pyObject[10]
         cdef jclass bridge_jclass
         cdef jint result
+        cdef JNIEnv* jni = self.getEnv()
+
 
         if not self.bridge_loaded:
+            self.bridge_loaded = True
             # first we load all the classes
             classes = [
                 "pyjvm/bridge/java/PyjvmBridge",
+                "pyjvm/bridge/java/reference/PyRefHolder",
+                "pyjvm/bridge/java/reference/PyRefQueue",
                 "pyjvm/bridge/java/PyObject",
                 "pyjvm/bridge/java/PyDict",
                 "pyjvm/bridge/java/PyList",
                 "pyjvm/bridge/java/PySet",
-                "pyjvm/bridge/java/reference/PyRefHolder",
-                "pyjvm/bridge/java/reference/PyRefQueue",
                 "pyjvm/bridge/java/PyException",
             ]
+            System = self.findClass("java/lang/System")
+            cl = System.getClassLoader()
             for cls in classes:
                 try:
                     bridge = self.findClass(cls)
@@ -333,7 +397,7 @@ cdef class Jvm:
                     
                     with open(bridgePath, "rb") as f:
                         bytecode = f.read()
-                        bridge = self.loadClass(bytecode, None)
+                        bridge = self.loadClass(bytecode, cl)
                 
             methods[0].name = "call_override"
             methods[0].signature = "([Ljava/lang/Object;)Ljava/lang/Object;"
@@ -342,7 +406,7 @@ cdef class Jvm:
             bridge = self.findClass("pyjvm/bridge/java/PyjvmBridge")
             bridge_jclass = <jclass><unsigned long long>bridge._jclass
         
-            result = self.jni[0].RegisterNatives(self.jni, bridge_jclass, methods, 1)
+            result = jni[0].RegisterNatives(jni, bridge_jclass, methods, 1)
             JvmExceptionPropagateIfThrown(self)
             if result != 0:
                 raise Exception("Could not register native methods", result)
@@ -357,7 +421,7 @@ cdef class Jvm:
             bridge = self.findClass("pyjvm/bridge/java/reference/PyRefHolder")
             bridge_jclass = <jclass><unsigned long long>bridge._jclass
 
-            result = self.jni[0].RegisterNatives(self.jni, bridge_jclass, methods_pyRefHolder, 2)
+            result = jni[0].RegisterNatives(jni, bridge_jclass, methods_pyRefHolder, 2)
             JvmExceptionPropagateIfThrown(self)
             if result != 0:
                 raise Exception("Could not register native methods", result)
@@ -397,22 +461,24 @@ cdef class Jvm:
             bridge_jclass = <jclass><unsigned long long>bridge._jclass
 
 
-            result = self.jni[0].RegisterNatives(self.jni, bridge_jclass, methods_pyObject, 10)
+            result = jni[0].RegisterNatives(jni, bridge_jclass, methods_pyObject, 10)
 
             JvmExceptionPropagateIfThrown(self)
             if result != 0:
                 raise Exception("Could not register native methods", result)
-
-            self.bridge_loaded = True
             
 
 
 
     cpdef object findClass(self, str name):
+        cdef JNIEnv* jni = self.getEnv()
+
         if name in self.__classes:
             return self.__classes[name]
+        
+
     
-        cdef jclass cls = self.jni[0].FindClass(self.jni, name.encode("utf-8"))
+        cdef jclass cls = jni[0].FindClass(jni, name.encode("utf-8"))
         JvmExceptionPropagateIfThrown(self)
 
         return JvmClassFromJclass(<unsigned long long>cls, self)
@@ -430,12 +496,16 @@ cdef class Jvm:
         cdef jobject junsafe = NULL
         cdef jmethodID ensureClassInitialized = NULL
         cdef jvalue args[1]
+        cdef JNIEnv* jni = self.getEnv()
 
         if loader != None:
             jloader = <jobject><unsigned long long>loader._jobject
 
-        cdef jclass cls = self.jni[0].DefineClass(self.jni, NULL, jloader, <const jbyte*>bytecode, length)
+        cdef jclass cls = jni[0].DefineClass(jni, NULL, jloader, <const jbyte*>bytecode, length)
         JvmExceptionPropagateIfThrown(self)
+
+        if cls == NULL:
+            raise JniException(<unsigned long long>cls, "Failed to DefineClass")
 
         err = self.jvmti[0].GetClassStatus(self.jvmti, cls, &status)
         if err != 0:
@@ -449,7 +519,7 @@ cdef class Jvm:
             junsafe = <jobject><unsigned long long>theUnsafe._jobject
 
             args[0].l = cls
-            self.jni[0].CallObjectMethodA(self.jni, junsafe, ensureClassInitialized, args)
+            jni[0].CallObjectMethodA(jni, junsafe, ensureClassInitialized, args)
             JvmExceptionPropagateIfThrown(self)
 
         if resolve:

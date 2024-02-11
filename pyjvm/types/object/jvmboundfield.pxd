@@ -19,3 +19,15 @@ cdef class JvmBoundField:
     cdef object get_float(self, JNIEnv* env, jobject object, jfieldID fid, Jvm jvm)
     cdef object get_double(self, JNIEnv* env, jobject object, jfieldID fid, Jvm jvm)
     cdef object get_object(self, JNIEnv* env, jobject object, jfieldID fid, Jvm jvm)
+
+    cdef void set(self, object value) except *
+
+    cdef void set_boolean(self, JNIEnv* env, jobject object, jfieldID fid, object value, Jvm jvm) except *
+    cdef void set_byte(self, JNIEnv* env, jobject object, jfieldID fid, object value, Jvm jvm) except *
+    cdef void set_char(self, JNIEnv* env, jobject object, jfieldID fid, object value, Jvm jvm) except *
+    cdef void set_short(self, JNIEnv* env, jobject object, jfieldID fid, object value, Jvm jvm) except *
+    cdef void set_int(self, JNIEnv* env, jobject object, jfieldID fid, object value, Jvm jvm) except *
+    cdef void set_long(self, JNIEnv* env, jobject object, jfieldID fid, object value, Jvm jvm) except * 
+    cdef void set_float(self, JNIEnv* env, jobject object, jfieldID fid, object value, Jvm jvm) except *
+    cdef void set_double(self, JNIEnv* env, jobject object, jfieldID fid, object value, Jvm jvm) except *
+    cdef void set_object(self, JNIEnv* env, jobject object, jfieldID fid, object value, Jvm jvm) except *

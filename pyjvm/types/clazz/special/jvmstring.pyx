@@ -14,7 +14,7 @@ cdef class JvmString(JvmClass):
     def __init__(self, *args, **kwargs):
         cdef jobject _jobject
         cdef Jvm jvm = self.__class__.jvm
-        cdef JNIEnv* jni = jvm.jni
+        cdef JNIEnv* jni = jvm.getEnv()
 
         data = args[0] if args else None
 
@@ -30,7 +30,7 @@ cdef class JvmString(JvmClass):
 
     def __len__(self):
         cdef Jvm jvm = self.__class__.jvm
-        cdef JNIEnv* jni = jvm.jni
+        cdef JNIEnv* jni = jvm.getEnv()
         cdef jobject obj = <jobject><unsigned long long>self._jobject
 
         cdef jsize length = jni[0].GetStringUTFLength(jni, obj)
@@ -51,7 +51,7 @@ cdef class JvmString(JvmClass):
     
     cdef str __get_data(self):
         cdef Jvm jvm = self.__class__.jvm
-        cdef JNIEnv* jni = jvm.jni
+        cdef JNIEnv* jni = jvm.getEnv()
         cdef jobject obj = <jobject><unsigned long long>self._jobject
 
         cdef char* utf8 = jni[0].GetStringUTFChars(jni, obj, NULL)

@@ -1,7 +1,6 @@
 from pyjvm.c.jni cimport jthrowable, JNIEnv
 from pyjvm.c.jvmti cimport jint
 from pyjvm.types.clazz.jvmclass cimport JvmObjectFromJobject
-from pyjvm.types.clazz.special.jvmexception import JvmException
 
 from enum import Enum
 
@@ -45,8 +44,10 @@ class JavaRuntimeException(JvmException):
     pass
 
 
+from pyjvm.types.clazz.special.jvmexception import JvmException
+
 cdef void JvmExceptionPropagateIfThrown(Jvm jvm) except *:
-    cdef JNIEnv* jni = jvm.jni
+    cdef JNIEnv* jni = jvm.getEnv()
     cdef jthrowable throwable = jni[0].ExceptionOccurred(jni)
 
     jvm.ensureBridgeLoaded()
@@ -54,6 +55,12 @@ cdef void JvmExceptionPropagateIfThrown(Jvm jvm) except *:
     if throwable is not NULL:
         jni[0].ExceptionClear(jni)
         obj = JvmObjectFromJobject(<unsigned long long> throwable, jvm)
+
+        if obj.__class__.__name__ == "pyjvm.bridge.java.PyException":
+            jvmPyObject = obj.pyObject
+            pyException = <object><void*><unsigned long long> jvmPyObject._ref
+            raise pyException
+
 
         raise JvmException(obj)
         #raise Exception("Exception occurred in JVM, cant be propagated to Python yet")

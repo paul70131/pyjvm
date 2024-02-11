@@ -8,7 +8,7 @@ from pyjvm.types.converter.typeconverter cimport convert_to_bool, convert_to_byt
 
 from pyjvm.exceptions.exception cimport JvmExceptionPropagateIfThrown
 
-from pyjvm.types.signature import JvmSignature
+from pyjvm.types.signature cimport JVM_SIG_ARRAY, JVM_SIG_CLASS, JVM_SIG_BOOLEAN, JVM_SIG_BYTE, JVM_SIG_CHAR, JVM_SIG_DOUBLE, JVM_SIG_FLOAT, JVM_SIG_INT, JVM_SIG_LONG, JVM_SIG_SHORT
 from pyjvm.types.array.jvmarray cimport JvmArray, CreateJvmArray
 
 cdef class JvmField:
@@ -18,6 +18,17 @@ cdef class JvmField:
 #    cdef int _modifiers
 #    cdef object _clazz
 
+    def __dealloc__(self):
+        cdef Jvm jvm = self._clazz.jvm
+        cdef jvmtiEnv* jvmti = jvm.jvmti
+        error = jvmti[0].Deallocate(jvmti, <unsigned char*>self._name)
+        if error != 0:
+            raise Exception("Failed to deallocate field name")
+        
+        error = jvmti[0].Deallocate(jvmti, <unsigned char*>self._signature)
+        if error != 0:
+            raise Exception("Failed to deallocate field signature")
+
 
     @property
     def name(self):
@@ -25,7 +36,7 @@ cdef class JvmField:
 
     @property
     def signature(self):
-        return self._signature
+        return self._signature.decode("utf-8")
 
     @property
     def clazz(self):
@@ -110,7 +121,7 @@ cdef class JvmField:
         #return <unsigned long long>value
         return JvmObjectFromJobject(<unsigned long long>value, jvm)
     
-    cdef object get_array(self, JNIEnv* env, jclass cid, jfieldID fid, str signature, Jvm jvm):
+    cdef object get_array(self, JNIEnv* env, jclass cid, jfieldID fid, char* signature, Jvm jvm):
         cdef jarray value
         value = env[0].GetStaticObjectField(env, cid, fid)
         JvmExceptionPropagateIfThrown(jvm)
@@ -118,62 +129,62 @@ cdef class JvmField:
     
     cpdef object get(self, object clazz):
         cdef Jvm jvm = clazz.jvm
-        cdef JNIEnv* env = jvm.jni
+        cdef JNIEnv* env = jvm.getEnv()
         cdef jclass cid = <jclass><unsigned long long>self._clazz._jclass
         cdef jfieldID fid = self._fid
 
         cdef object value
 
-        if self._signature == JvmSignature.BOOLEAN:
+        if self._signature[0] == JVM_SIG_BOOLEAN:
             return self.get_boolean(env, cid, fid, jvm)
-        elif self._signature == JvmSignature.BYTE:
+        elif self._signature[0] == JVM_SIG_BYTE:
             return self.get_byte(env, cid, fid, jvm)
-        elif self._signature == JvmSignature.CHAR:
+        elif self._signature[0] == JVM_SIG_CHAR:
             return self.get_char(env, cid, fid, jvm)
-        elif self._signature == JvmSignature.DOUBLE:
+        elif self._signature[0] == JVM_SIG_DOUBLE:
             return self.get_double(env, cid, fid, jvm)
-        elif self._signature == JvmSignature.FLOAT:
+        elif self._signature[0] == JVM_SIG_FLOAT:
             return self.get_float(env, cid, fid, jvm)
-        elif self._signature == JvmSignature.INT:
+        elif self._signature[0] == JVM_SIG_INT:
             return self.get_int(env, cid, fid, jvm)
-        elif self._signature == JvmSignature.LONG:
+        elif self._signature[0] == JVM_SIG_LONG:
             return self.get_long(env, cid, fid, jvm)
-        elif self._signature == JvmSignature.SHORT:
+        elif self._signature[0] == JVM_SIG_SHORT:
             return self.get_short(env, cid, fid, jvm)
-        elif self._signature[0] == JvmSignature.ARRAY:
+        elif self._signature[0] == JVM_SIG_ARRAY:
             return self.get_array(env, cid, fid, self._signature, jvm)
-        elif self._signature[0] == JvmSignature.CLASS:
+        elif self._signature[0] == JVM_SIG_CLASS:
             return self.get_object(env, cid, fid, jvm)
         else:
             raise NotImplementedError
 
     cpdef void set(self, object clazz, object value) except *:
         cdef Jvm jvm = clazz.jvm
-        cdef JNIEnv* env = jvm.jni
+        cdef JNIEnv* env = jvm.getEnv()
         cdef jclass cid = <jclass><unsigned long long>self._clazz._jclass
         cdef jfieldID fid = self._fid
 
         # do type conversion here
 
-        if self._signature == JvmSignature.BOOLEAN:
+        if self._signature[0] == JVM_SIG_BOOLEAN:
             self.set_boolean(env, cid, fid, value, jvm)
-        elif self._signature == JvmSignature.BYTE:
+        elif self._signature[0] == JVM_SIG_BYTE:
             self.set_byte(env, cid, fid, value, jvm)
-        elif self._signature == JvmSignature.CHAR:
+        elif self._signature[0] == JVM_SIG_CHAR:
             self.set_char(env, cid, fid, value, jvm)
-        elif self._signature == JvmSignature.DOUBLE:
+        elif self._signature[0] == JVM_SIG_DOUBLE:
             self.set_double(env, cid, fid, value, jvm)
-        elif self._signature == JvmSignature.FLOAT:
+        elif self._signature[0] == JVM_SIG_FLOAT:
             self.set_float(env, cid, fid, value, jvm)
-        elif self._signature == JvmSignature.INT:
+        elif self._signature[0] == JVM_SIG_INT:
             self.set_int(env, cid, fid, value, jvm)
-        elif self._signature == JvmSignature.LONG:
+        elif self._signature[0] == JVM_SIG_LONG:
             self.set_long(env, cid, fid, value, jvm)
-        elif self._signature == JvmSignature.SHORT:
+        elif self._signature[0] == JVM_SIG_SHORT:
             self.set_short(env, cid, fid, value, jvm)
-        elif self._signature[0] == JvmSignature.ARRAY:
+        elif self._signature[0] == JVM_SIG_ARRAY:
             self.set_array(env, cid, fid, value, jvm)
-        elif self._signature[0] == JvmSignature.CLASS:
+        elif self._signature[0] == JVM_SIG_CLASS:
             self.set_object(env, cid, fid, value, jvm)
         else:
             raise NotImplementedError
@@ -241,10 +252,10 @@ cdef class JvmField:
             name += "final "
         if self.abstract:
             name += "abstract "
-        name += self._signature + " " + self._name
+        name += self._signature.decode("utf-8") + " " + self._name.decode("utf-8")
         return name
     
-    def __init__(self, str name, str signature, int modifiers, object clazz):
+    def __init__(self, char* name, char* signature, int modifiers, object clazz):
         self._name = name
         self._signature = signature
         self._modifiers = modifiers
@@ -268,19 +279,8 @@ cdef JvmFieldFromJfieldID(jfieldID fid, jclass cid, object clazz):
     if error != 0:
         raise Exception("Failed to get field modifiers")
 
-    
-    py_name = name.decode("utf-8")
-    py_signature = signature.decode("utf-8")
-    
-    error = jvmti[0].Deallocate(jvmti, <unsigned char*>name)
-    if error != 0:
-        raise Exception("Failed to deallocate field name")
-    
-    error = jvmti[0].Deallocate(jvmti, <unsigned char*>signature)
-    if error != 0:
-        raise Exception("Failed to deallocate field signature")
 
-    f = JvmField(py_name, py_signature, modifiers, clazz)
+    f = JvmField(name, signature, modifiers, clazz)
     f._fid = fid
     return f
 

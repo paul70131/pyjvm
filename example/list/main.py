@@ -27,8 +27,8 @@ mylist.add(Integer.valueOf(1))
 mylist.add(Integer.valueOf(2))
 mylist.add(Integer.valueOf(3))
 
-print(mylist.has3()) # True
+assert mylist.has3() # True
 
 mylist.add(Integer.valueOf(4))
 
-print(mylist.has3()) # False
+assert not mylist.has3() # False

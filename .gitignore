@@ -166,5 +166,5 @@ pyjvm/*.pyd
 
 
 *.class
-
+*.jar
 .metals

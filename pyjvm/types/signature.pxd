@@ -1,19 +1,13 @@
 
 
-
-#enum JVM_SIGNATURE {
-#    JVM_SIGNATURE_BOOLEAN = 'Z',
-#    JVM_SIGNATURE_BYTE = 'B',
-#    JVM_SIGNATURE_CHAR = 'C',
-#    JVM_SIGNATURE_SHORT = 'S',
-#    JVM_SIGNATURE_INT = 'I',
-#    JVM_SIGNATURE_LONG = 'J',
-#    JVM_SIGNATURE_FLOAT = 'F',
-#    JVM_SIGNATURE_DOUBLE = 'D',
-#    JVM_SIGNATURE_VOID = 'V',
-#    JVM_SIGNATURE_CLASS = 'L',
-#    JVM_SIGNATURE_ARRAY = '[',
-#    JVM_SIGNATURE_ENDCLASS = ';',
-#    JVM_SIGNATURE_FUNC = '(',
-#    JVM_SIGNATURE_ENDFUNC = ')',
-#};
+cdef char JVM_SIG_BOOLEAN
+cdef char JVM_SIG_BYTE
+cdef char JVM_SIG_CHAR 
+cdef char JVM_SIG_SHORT 
+cdef char JVM_SIG_INT 
+cdef char JVM_SIG_LONG 
+cdef char JVM_SIG_FLOAT 
+cdef char JVM_SIG_DOUBLE 
+cdef char JVM_SIG_VOID 
+cdef char JVM_SIG_CLASS 
+cdef char JVM_SIG_ARRAY 

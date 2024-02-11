@@ -6,7 +6,7 @@ from pyjvm.exceptions.exception cimport JvmExceptionPropagateIfThrown
 
 cdef class JvmArray:
     cdef jarray _jarray
-    cdef str signature
+    cdef char* signature
     cdef Jvm jvm
     cdef int current_index
 
@@ -52,5 +52,5 @@ cdef class JvmPrimitiveArray(JvmArray):
 cdef class JvmByteArray(JvmPrimitiveArray):
     pass
 
-cdef object CreateJvmArray(Jvm jvm, jarray jarray, str signature)
+cdef object CreateJvmArray(Jvm jvm, jarray jarray, char* signature)
 

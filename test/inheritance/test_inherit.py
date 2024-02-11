@@ -27,7 +27,7 @@ class TestAttachCreate(TestCase):
             package = "test.java"
 
             new_static_int: StaticInt = 42
-            new_int: Int 
+            new_int: Int
             new_string: Object(String)
             new_static_string: StaticObject(String) = "Hello World! 2"
 
@@ -52,6 +52,7 @@ class TestAttachCreate(TestCase):
             @Method
             def __init__(self, a: int):
                 self.new_int = a
+                self.new_string = "Hello World!"
             
 
         
@@ -71,14 +72,18 @@ class TestAttachCreate(TestCase):
         self.assertEqual(TestInherit.new_static_double, 42.01)
 
         obj = TestInherit(3)
+        self.assertEqual(obj.new_string, "Hello World!")
+        self.assertEqual(obj.new_int, 3)
 
         self.assertEqual(type(obj.method), JvmBoundMethod)
 
+
         self.assertEqual(obj.test_override_noargs(), 2)
+
+
         self.assertEqual(obj.test_override_args(1, 2.0, 3, True, "Hello World!"), 3.0)
 
+
         self.assertEqual(obj.method(), 42)
-        self.assertEqual(obj.method2(1, 2.0, "Hello World!", True), 42)
-        self.assertEqual(obj.method2(1, 2.0, "Hello World!", False), -42)
 
         

@@ -6,6 +6,8 @@ from pyjvm.jvm cimport Jvm
 from pyjvm.c.jni cimport jfieldID, jint, jclass, jboolean, jbyte, jchar, jdouble, jfloat, jint, jlong, jshort, jstring, jobject, JNIEnv
 from pyjvm.c.jvmti cimport jvmtiEnv
 
+from pyjvm.types.converter.typeconverter cimport convert_to_bool, convert_to_byte, convert_to_char, convert_to_double, convert_to_float, convert_to_int, convert_to_long, convert_to_short, convert_to_object
+
 from pyjvm.exceptions.exception cimport JvmExceptionPropagateIfThrown
 
 from pyjvm.types.signature import JvmSignature
@@ -19,13 +21,85 @@ cdef class JvmBoundField:
         self._field = field
         self._object = obj
 
+
+    cdef void set(self, object value) except *:
+        cdef Jvm jvm = self._object.__class__.jvm
+        cdef JNIEnv* env = jvm.getEnv()
+        cdef jobject cid = <jobject><unsigned long long>self._object._jobject
+        cdef jfieldID fid = self._field._fid
+        cdef char* signature = self._field._signature
+
+        if signature == JvmSignature.BOOLEAN:
+            self.set_boolean(env, cid, fid, value, jvm)
+        elif signature == JvmSignature.BYTE:
+            self.set_byte(env, cid, fid, value, jvm)
+        elif signature == JvmSignature.CHAR:
+            self.set_char(env, cid, fid, value, jvm)
+        elif signature == JvmSignature.DOUBLE:
+            self.set_double(env, cid, fid, value, jvm)
+        elif signature == JvmSignature.FLOAT:
+            self.set_float(env, cid, fid, value, jvm)
+        elif signature == JvmSignature.INT:
+            self.set_int(env, cid, fid, value, jvm)
+        elif signature == JvmSignature.LONG:
+            self.set_long(env, cid, fid, value, jvm)
+        elif signature == JvmSignature.SHORT:
+            self.set_short(env, cid, fid, value, jvm)
+        else:
+            self.set_object(env, cid, fid, value, jvm)
+
+    cdef void set_boolean(self, JNIEnv* env, jobject object, jfieldID fid, object value, Jvm jvm) except *:
+        cdef jboolean jvalue = convert_to_bool(value)
+        env[0].SetBooleanField(env, object, fid, jvalue)
+        JvmExceptionPropagateIfThrown(jvm)
+
+    cdef void set_byte(self, JNIEnv* env, jobject object, jfieldID fid, object value, Jvm jvm) except *:
+        cdef jbyte jvalue = convert_to_byte(value)
+        env[0].SetByteField(env, object, fid, jvalue)
+        JvmExceptionPropagateIfThrown(jvm)
+
+    cdef void set_char(self, JNIEnv* env, jobject object, jfieldID fid, object value, Jvm jvm) except *:
+        cdef jchar jvalue = convert_to_char(value)
+        env[0].SetCharField(env, object, fid, jvalue)
+        JvmExceptionPropagateIfThrown(jvm)
+
+    cdef void set_short(self, JNIEnv* env, jobject object, jfieldID fid, object value, Jvm jvm) except *:
+        cdef jshort jvalue = convert_to_short(value)
+        env[0].SetShortField(env, object, fid, jvalue)
+        JvmExceptionPropagateIfThrown(jvm)
+
+    cdef void set_int(self, JNIEnv* env, jobject object, jfieldID fid, object value, Jvm jvm) except *:
+        cdef jint jvalue = convert_to_int(value)
+        env[0].SetIntField(env, object, fid, jvalue)
+        JvmExceptionPropagateIfThrown(jvm)
+
+    cdef void set_long(self, JNIEnv* env, jobject object, jfieldID fid, object value, Jvm jvm) except *:
+        cdef jlong jvalue = convert_to_long(value)
+        env[0].SetLongField(env, object, fid, jvalue)
+        JvmExceptionPropagateIfThrown(jvm)
+
+    cdef void set_float(self, JNIEnv* env, jobject object, jfieldID fid, object value, Jvm jvm) except *:
+        cdef jfloat jvalue = convert_to_float(value)
+        env[0].SetFloatField(env, object, fid, jvalue)
+        JvmExceptionPropagateIfThrown(jvm)
+
+    cdef void set_double(self, JNIEnv* env, jobject object, jfieldID fid, object value, Jvm jvm) except *:
+        cdef jdouble jvalue = convert_to_double(value)
+        env[0].SetDoubleField(env, object, fid, jvalue)
+        JvmExceptionPropagateIfThrown(jvm)
+
+    cdef void set_object(self, JNIEnv* env, jobject object, jfieldID fid, object value, Jvm jvm) except *:
+        cdef jobject jvalue = convert_to_object(value, jvm)
+        env[0].SetObjectField(env, object, fid, jvalue)
+        JvmExceptionPropagateIfThrown(jvm)
+
     cpdef object get(self):
         cdef Jvm jvm = self._object.__class__.jvm
-        cdef JNIEnv* env = jvm.jni
+        cdef JNIEnv* env = jvm.getEnv()
        # cdef jclass cid = <jclass><unsigned long long>self._object.__class__._jclass
         cdef jobject cid = <jobject><unsigned long long>self._object._jobject
         cdef jfieldID fid = self._field._fid
-        cdef str signature = self._field._signature
+        cdef char* signature = self._field._signature
 
         cdef jint error
         cdef object value

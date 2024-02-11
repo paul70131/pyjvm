@@ -20,8 +20,6 @@ class MethodLinkAdapter(MethodAdapter):
         ret = descriptor.ret
 
         args = ["L..."] + r_args
-
-        print(f"MethodLinkAdapter.adapt: {name} {args} -> {ret}")
         link = jvm.newMethodLink(method, descriptor)
 
         cp_name = cp.find_string(name, True)
@@ -37,7 +35,7 @@ class MethodLinkAdapter(MethodAdapter):
             buffer.u1(Opcodes.ALOAD_0)
             if super.__name__ != "java/lang/Object":
                 for i, arg in enumerate(r_args):
-                    if arg == "L" or arg == "[":
+                    if arg[0] == "L" or arg[0] == "[":
                         buffer.u1(Opcodes.ALOAD)
                         buffer.u1(i + 1)
                     elif arg == "J":

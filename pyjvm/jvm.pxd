@@ -7,12 +7,15 @@ from pyjvm.types.clazz.jvmmethod cimport JvmMethodSignature
 
 cdef class Jvm:
     cdef JavaVM* jvm
-    cdef JNIEnv* jni
     cdef jvmtiEnv* jvmti
     cdef bint bridge_loaded
     cdef public dict __classes
     cdef list[JvmMethodLink] links
     cdef public object _export_generated_classes
+    cdef dict[int, unsigned long long] envs
+
+    cdef JNIEnv* getEnv(self) except NULL
+    cdef JNIEnv* initNewEnv(self) except NULL
 
     cpdef JvmMethodLink newMethodLink(self, object method, JvmMethodSignature signature)
     cpdef void ensure_capability(self, str capability) except *

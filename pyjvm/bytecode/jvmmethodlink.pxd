@@ -1,6 +1,6 @@
 from pyjvm.types.clazz.jvmmethod cimport JvmMethodSignature
 
-from pyjvm.c.jni cimport jobject
+from pyjvm.c.jni cimport jobject, JNIEnv
 from pyjvm.jvm cimport Jvm
 
 cdef class JvmMethodLink:

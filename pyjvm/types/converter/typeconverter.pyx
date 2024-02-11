@@ -1,9 +1,11 @@
+
 from pyjvm.types.signature import JvmSignature
 from pyjvm.c.jni cimport jvalue, jboolean, jbyte, jchar, jshort, jint, jlong, jfloat, jdouble, jobject, JNIEnv, jclass
 from pyjvm.types.clazz.special.jvmstring cimport JvmString
 from pyjvm.types.clazz.jvmclass cimport JvmClass
 
 from cpython.ref cimport Py_INCREF, Py_DECREF
+
 
 cdef jboolean convert_to_bool(object pyobj) except *:
     return <jboolean><int>bool(pyobj)
@@ -34,7 +36,7 @@ cdef jdouble convert_to_double(object pyobj) except *:
 
 cdef jobject convert_to_object(object pyobj, Jvm jvm, str parent=None) except *:
     cdef jobject result
-    cdef JNIEnv* jni = jvm.jni
+    cdef JNIEnv* jni = jvm.getEnv()
     cdef jboolean isInstance = 0
     cdef jclass parent_class_id
     if pyobj is None:
@@ -62,6 +64,8 @@ cdef jobject convert_to_object(object pyobj, Jvm jvm, str parent=None) except *:
         return jni[0].NewLocalRef(jni, result)
 
     else:
+        if type(pyobj) in (int, float, bool):
+            raise ValueError
         if pyobj is None:
             return NULL
 
