@@ -12,6 +12,8 @@ class DUP_TOP(PyOpcode):
         pass
 
     def transpile(self, bytecode: BytecodeWriter, pystack_offset: int, pystack_index: int, cp) -> int:
+        pystack_offset += 1
+
         bytecode.bc(Opcodes.ALOAD)
         bytecode.u1(pystack_index)
         # stack: [..., pystack]
@@ -24,7 +26,7 @@ class DUP_TOP(PyOpcode):
         # stack: [..., pystack, pystack_offset, pystack]
 
         bytecode.bc(Opcodes.BIPUSH)
-        bytecode.u1(0)
+        bytecode.u1(pystack_offset + 1)
         # stack: [..., pystack, pystack_offset, pystack, 0]
 
         bytecode.bc(Opcodes.AALOAD)

@@ -15,7 +15,7 @@ class LOAD_FAST(PyOpcode):
         bytecode.bc(Opcodes.ALOAD)
         bytecode.u1(pystack_index)
         bytecode.bc(Opcodes.BIPUSH)
-        bytecode.u1(self.index)
+        bytecode.u1(pystack_offset)
         bytecode.bc(Opcodes.ALOAD)
         bytecode.u1(self.index)
         bytecode.bc(Opcodes.AASTORE)

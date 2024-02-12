@@ -29,7 +29,7 @@ class LOAD_ATTR(PyOpcode):
         bytecode.u2(pyobj)
         # stack: [...pystack[pystack_offset],  isinstance]
         bytecode.bc(Opcodes.IFEQ)
-        bytecode.u2(0x0006 +
+        bytecode.u2(bytecode.bc_offset + 3)
 
 
 

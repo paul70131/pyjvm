@@ -1,5 +1,7 @@
 from .load_fast import LOAD_FAST
 from .dup_top import DUP_TOP
+from .load_const import LOAD_CONST
+from .inplace_add import INPLACE_ADD
 
 from dis import Instruction
 

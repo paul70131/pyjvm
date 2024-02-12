@@ -79,7 +79,7 @@ class TranspiledMethod:
         self.bytecode.bc(Opcodes.BIPUSH)
         if code.co_stacksize > 0xff:
             raise Exception("Stacksize too large")
-        self.bytecode.u1(code.co_stacksize) # +1 for this
+        self.bytecode.u1(code.co_stacksize + 1) # 
 
         # newarray java/lang/Object
         self.bytecode.bc(Opcodes.ANEWARRAY)
@@ -94,11 +94,15 @@ class TranspiledMethod:
     
         pystack_index = locals_offset
         pystack_offset = 0
+
+        self.bytecode.bc(Opcodes.NOP)
         
         for bc in dis.get_instructions(self.method):
+            print(bc)
             opc = get_opcode(bc.opcode, bc)
             if opc:
                 pystack_offset = opc.transpile(self.bytecode, pystack_offset, pystack_index, self.cp)
+                self.bytecode.bc(Opcodes.NOP) # for debugging to see where the bytecode ends
 
         
         self.bytecode.bc(Opcodes.RETURN)
