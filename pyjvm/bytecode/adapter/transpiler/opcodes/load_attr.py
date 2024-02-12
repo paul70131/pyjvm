@@ -16,20 +16,20 @@ class LOAD_ATTR(PyOpcode):
         # 2. LOAD_ATTR (PythonType) does a "invokevirtual" on the object. Therefore we need to jump accordingly
 
     def transpile(self, bytecode: BytecodeWriter, pystack_offset: int, pystack_index: int, cp) -> int:
-        bytecode.u1(Opcodes.ALOAD)
+        bytecode.bc(Opcodes.ALOAD)
         bytecode.u1(pystack_index)
         # stack: [..., pystack]
-        bytecode.u1(Opcodes.ICONST_0)
-        bytecode.u1(Opcodes.AALOAD)
+        bytecode.bc(Opcodes.ICONST_0)
+        bytecode.bc(Opcodes.AALOAD)
         # stack: [..., pystack[pystack_offset]]
-        bytecode.u1(Opcodes.DUP) 
+        bytecode.bc(Opcodes.DUP) 
         # stack: [...pystack[pystack_offset], pystack[pystack_offset]]
         pyobj = cp.find_class("pyjvm/bridge/java/PyObject")
-        bytecode.u1(Opcodes.INSTANCEOF)
+        bytecode.bc(Opcodes.INSTANCEOF)
         bytecode.u2(pyobj)
         # stack: [...pystack[pystack_offset],  isinstance]
-        bytecode.u1(Opcodes.IFEQ)
-        
+        bytecode.bc(Opcodes.IFEQ)
+        bytecode.u2(0x0006 +
 
 
 

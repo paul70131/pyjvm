@@ -12,11 +12,11 @@ class LOAD_FAST(PyOpcode):
         self.index = inst.arg
 
     def transpile(self, bytecode: BytecodeWriter, pystack_offset: int, pystack_index: int, cp) -> int:
-        bytecode.u1(Opcodes.ALOAD)
+        bytecode.bc(Opcodes.ALOAD)
         bytecode.u1(pystack_index)
-        bytecode.u1(Opcodes.BIPUSH)
+        bytecode.bc(Opcodes.BIPUSH)
         bytecode.u1(self.index)
-        bytecode.u1(Opcodes.ALOAD)
+        bytecode.bc(Opcodes.ALOAD)
         bytecode.u1(self.index)
-        bytecode.u1(Opcodes.AASTORE)
+        bytecode.bc(Opcodes.AASTORE)
         return pystack_offset + 1

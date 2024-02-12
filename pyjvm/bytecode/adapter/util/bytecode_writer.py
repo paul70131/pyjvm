@@ -1,13 +1,19 @@
 class BytecodeWriter:
     data: list[int]
+    bc_offset: int
 
     def __init__(self):
         self.data = []
+        self.bc_offset = 0
 
     def _write(self, v:int):
         if v > 0xff:
             raise Exception("BytecodeWriter._write: value too large")
         self.data.append(v)
+
+    def bc(self, v:int):
+        self._write(v)
+        self.bc_offset += 1
 
     def u1(self, v:int):
         self._write(v)

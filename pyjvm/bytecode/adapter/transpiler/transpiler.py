@@ -76,20 +76,20 @@ class TranspiledMethod:
         javaLangObject = self.cp.find_class("java/lang/Object", True)
 
         # bipush co_stacksize
-        self.bytecode.u1(Opcodes.BIPUSH)
+        self.bytecode.bc(Opcodes.BIPUSH)
         if code.co_stacksize > 0xff:
             raise Exception("Stacksize too large")
         self.bytecode.u1(code.co_stacksize) # +1 for this
 
         # newarray java/lang/Object
-        self.bytecode.u1(Opcodes.ANEWARRAY)
+        self.bytecode.bc(Opcodes.ANEWARRAY)
         self.bytecode.u2(javaLangObject.offset)
 
         if locals_offset + 1 > 0xff:
             raise Exception("Locals too large")
 
         # astore locals_offset + 1
-        self.bytecode.u1(Opcodes.ASTORE)
+        self.bytecode.bc(Opcodes.ASTORE)
         self.bytecode.u1(locals_offset)
     
         pystack_index = locals_offset
@@ -101,7 +101,7 @@ class TranspiledMethod:
                 pystack_offset = opc.transpile(self.bytecode, pystack_offset, pystack_index, self.cp)
 
         
-        self.bytecode.u1(Opcodes.RETURN)
+        self.bytecode.bc(Opcodes.RETURN)
 
 
 
