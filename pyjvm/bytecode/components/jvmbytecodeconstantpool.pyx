@@ -71,7 +71,6 @@ cdef class JvmBytecodeConstantPool(JvmBytecodeComponent):
 
         raise Exception("Class not found in constant pool: %s" % py_class)
 
-    
     cpdef JvmBytecodeConstantPoolEntry find_jstring(self, str py_string, bint put=False) except *:
         cdef JvmBytecodeConstantPoolEntry entry
         cdef JvmBytecodeConstantPoolEntry value_entry

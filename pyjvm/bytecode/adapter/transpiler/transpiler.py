@@ -1,5 +1,7 @@
-from pyjvmbc import ClassFile
-from pyjvmbc.klass.constant_pool import CP_Long, CP_Double, CP_String, CP_Class
+from pyjvm.bytecode.adapter.util.bytecode_writer import BytecodeWriter
+from pyjvm.bytecode.adapter.util.opcodes import Opcodes
+
+from .opcodes import get_opcode
 
 import dis
 
@@ -19,20 +21,22 @@ from typing import Callable
 # set -> pyjvm/bridge/PySet | java/util/Set             # can be used interchangeably
 
 class TranspiledMethod:
-    class_file: ClassFile
+    cp: object # constant pool
     method_name: str
     method: str
+    bytecode: BytecodeWriter
 
-    def __init__(self, class_file: ClassFile, method_name: str, method: Callable):
-        self.class_file = class_file
+    def __init__(self, cp, method_name: str, method: Callable):
+        self.cp = cp
         self.method_name = method_name
         self.method = method
+        self.bytecode = BytecodeWriter()
 
     
     def transpile(self):
         self.generate_signature()
         self.save_constants()
-        bc = self.write_bytecode()
+        self.write_bytecode()
 
     def generate_signature(self):
         # generate signature
@@ -46,13 +50,16 @@ class TranspiledMethod:
         j_constants = []
         for const in self.method.__code__.co_consts:
             if isinstance(const, int):
-                cp = CP_Long.insert(self.class_file.constant_pool, const)
+                #cp = CP_Long.insert(self.class_file.constant_pool, const)
+                cp = self.cp.find_long(const, True)
                 j_constants.append(cp)
             elif isinstance(const, float):
-                cp = CP_Double.insert(self.class_file.constant_pool, const)
+                #cp = CP_Double.insert(self.class_file.constant_pool, const)
+                cp = self.cp.find_double(const, True)
                 j_constants.append(cp)
             elif isinstance(const, str):
-                cp = CP_String.insert(self.class_file.constant_pool, const)
+                #cp = CP_String.insert(self.class_file.constant_pool, const)
+                cp = self.cp.find_jstring(const, True)
                 j_constants.append(cp)
             elif const is None:
                 pass
@@ -60,56 +67,42 @@ class TranspiledMethod:
                 raise Exception(f"Unsupported constant type: {type(const)}")
             
     def write_bytecode(self):
-        bytecode = []
-
         code = self.method.__code__
-        locals_offset = code.co_argcount + 1 # +1 for self
+        locals_offset = code.co_argcount # +1 for self
 
         # generate init bytecode
         # create pyStack array with size of co_stacksize
-        javaLangObject = CP_Class.insert(self.class_file.constant_pool, "java/lang/Object")
+        #javaLangObject = CP_Class.insert(self.class_file.constant_pool, "java/lang/Object")
+        javaLangObject = self.cp.find_class("java/lang/Object", True)
 
         # bipush co_stacksize
-        bytecode.append(0x10)
+        self.bytecode.u1(Opcodes.BIPUSH)
         if code.co_stacksize > 0xff:
             raise Exception("Stacksize too large")
-        
-        bytecode.append(code.co_stacksize & 0xff)
+        self.bytecode.u1(code.co_stacksize) # +1 for this
 
         # newarray java/lang/Object
-        bytecode.append(0xbd)
-        bytecode.append(javaLangObject.index >> 8)
-        bytecode.append(javaLangObject.index & 0xff)
+        self.bytecode.u1(Opcodes.ANEWARRAY)
+        self.bytecode.u2(javaLangObject.offset)
 
         if locals_offset + 1 > 0xff:
             raise Exception("Locals too large")
 
         # astore locals_offset + 1
-        bytecode.append(0x3a)
-        bytecode.append((locals_offset + 1) & 0xff)
-        pystack_index = locals_offset + 1
-
-        # fill array with arguments
-        for i in range(locals_offset):
-            # aload i + 1 # +1 for this
-            bytecode.append(0x19)
-            bytecode.append((i + 1) & 0xff)
-
-            # bipush
-            bytecode.append(0x10)
-            bytecode.append(i & 0xff)
-
-            # aload pystack_index
-            bytecode.append(0x19)
-            bytecode.append(pystack_index & 0xff)
-
-            # aastore
-            bytecode.append(0x53)
+        self.bytecode.u1(Opcodes.ASTORE)
+        self.bytecode.u1(locals_offset)
+    
+        pystack_index = locals_offset
+        pystack_offset = 0
         
         for bc in dis.get_instructions(self.method):
-            print(bc)
+            opc = get_opcode(bc.opcode, bc)
+            if opc:
+                pystack_offset = opc.transpile(self.bytecode, pystack_offset, pystack_index, self.cp)
+
         
-        return bytecode
+        self.bytecode.u1(Opcodes.RETURN)
+
 
 
 
