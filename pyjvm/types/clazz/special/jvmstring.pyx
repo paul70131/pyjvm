@@ -37,6 +37,9 @@ cdef class JvmString(JvmClass):
         JvmExceptionPropagateIfThrown(jvm)
         return <long long>length
 
+    def toString(self):
+        return self.__str__()
+
     def __str__(self):
         return self.__get_data()
 

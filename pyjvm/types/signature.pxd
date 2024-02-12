@@ -10,4 +10,7 @@ cdef char JVM_SIG_FLOAT
 cdef char JVM_SIG_DOUBLE 
 cdef char JVM_SIG_VOID 
 cdef char JVM_SIG_CLASS 
-cdef char JVM_SIG_ARRAY 
+cdef char JVM_SIG_ARRAY
+cdef char JVM_SIG_END
+cdef char JVM_SIG_ARGS_START
+cdef char JVM_SIG_ARGS_END

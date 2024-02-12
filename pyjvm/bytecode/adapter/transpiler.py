@@ -33,7 +33,6 @@ class TranspiledMethod:
         self.generate_signature()
         self.save_constants()
         bc = self.write_bytecode()
-        print(self.signature)
 
     def generate_signature(self):
         # generate signature

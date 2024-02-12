@@ -10,7 +10,7 @@ from pyjvm.types.converter.typeconverter cimport convert_to_bool, convert_to_byt
 
 from pyjvm.exceptions.exception cimport JvmExceptionPropagateIfThrown
 
-from pyjvm.types.signature import JvmSignature
+from pyjvm.types.signature cimport JVM_SIG_BOOLEAN, JVM_SIG_BYTE, JVM_SIG_CHAR, JVM_SIG_SHORT, JVM_SIG_INT, JVM_SIG_LONG, JVM_SIG_FLOAT, JVM_SIG_DOUBLE, JVM_SIG_ARRAY, JVM_SIG_CLASS
 
 
 cdef class JvmBoundField:
@@ -29,21 +29,21 @@ cdef class JvmBoundField:
         cdef jfieldID fid = self._field._fid
         cdef char* signature = self._field._signature
 
-        if signature == JvmSignature.BOOLEAN:
+        if signature[0] == JVM_SIG_BOOLEAN:
             self.set_boolean(env, cid, fid, value, jvm)
-        elif signature == JvmSignature.BYTE:
+        elif signature[0] == JVM_SIG_BYTE:
             self.set_byte(env, cid, fid, value, jvm)
-        elif signature == JvmSignature.CHAR:
+        elif signature[0] == JVM_SIG_CHAR:
             self.set_char(env, cid, fid, value, jvm)
-        elif signature == JvmSignature.DOUBLE:
+        elif signature[0] == JVM_SIG_DOUBLE:
             self.set_double(env, cid, fid, value, jvm)
-        elif signature == JvmSignature.FLOAT:
+        elif signature[0] == JVM_SIG_FLOAT:
             self.set_float(env, cid, fid, value, jvm)
-        elif signature == JvmSignature.INT:
+        elif signature[0] == JVM_SIG_INT:
             self.set_int(env, cid, fid, value, jvm)
-        elif signature == JvmSignature.LONG:
+        elif signature[0] == JVM_SIG_LONG:
             self.set_long(env, cid, fid, value, jvm)
-        elif signature == JvmSignature.SHORT:
+        elif signature[0] == JVM_SIG_SHORT:
             self.set_short(env, cid, fid, value, jvm)
         else:
             self.set_object(env, cid, fid, value, jvm)
@@ -104,21 +104,21 @@ cdef class JvmBoundField:
         cdef jint error
         cdef object value
 
-        if signature == JvmSignature.BOOLEAN:
+        if signature[0] == JVM_SIG_BOOLEAN:
             return self.get_boolean(env, cid, fid, jvm)
-        elif signature == JvmSignature.BYTE:
+        elif signature[0] == JVM_SIG_BYTE:
             return self.get_byte(env, cid, fid, jvm)
-        elif signature == JvmSignature.CHAR:
+        elif signature[0] == JVM_SIG_CHAR:
             return self.get_char(env, cid, fid, jvm)
-        elif signature == JvmSignature.DOUBLE:
+        elif signature[0] == JVM_SIG_DOUBLE:
             return self.get_double(env, cid, fid, jvm)
-        elif signature == JvmSignature.FLOAT:
+        elif signature[0] == JVM_SIG_FLOAT:
             return self.get_float(env, cid, fid, jvm)
-        elif signature == JvmSignature.INT:
+        elif signature[0] == JVM_SIG_INT:
             return self.get_int(env, cid, fid, jvm)
-        elif signature == JvmSignature.LONG:
+        elif signature[0] == JVM_SIG_LONG:
             return self.get_long(env, cid, fid, jvm)
-        elif signature == JvmSignature.SHORT:
+        elif signature[0] == JVM_SIG_SHORT:
             return self.get_short(env, cid, fid, jvm)
         else:
             return self.get_object(env, cid, fid, jvm)

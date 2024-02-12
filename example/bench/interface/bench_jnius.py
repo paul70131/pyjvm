@@ -10,11 +10,12 @@ def benchmark_pyjnius():
     System = autoclass('java.lang.System')
 
     # Create Java objects from Python
-    for _ in range(10000):
+    for _ in range(100000):
         obj = MyClass()
 
-    for _ in range(10000):
+    for _ in range(100000):
         obj = System.getenv()
+        obj.toString()
 
     # End the timer
     end_time = time.time()

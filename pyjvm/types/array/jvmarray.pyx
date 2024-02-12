@@ -1,50 +1,59 @@
 from pyjvm.c.jni cimport jarray, JNIEnv, jsize, jint, jboolean, jchar, jshort, jlong, jfloat, jdouble, jbyte, JNI_ABORT, jobject
 from pyjvm.jvm cimport Jvm
 
-from libc.stdlib cimport malloc, free 
+from libc.stdlib cimport malloc, free
+from libc.string cimport memcpy, strlen, strcpy
 
 from pyjvm.exceptions.exception cimport JvmExceptionPropagateIfThrown
 
-from pyjvm.types.signature import JvmSignature
+from pyjvm.types.signature cimport JVM_SIG_CLASS, JVM_SIG_ARRAY, JVM_SIG_BYTE, JVM_SIG_BOOLEAN, JVM_SIG_CHAR, JVM_SIG_SHORT, JVM_SIG_INT, JVM_SIG_LONG, JVM_SIG_FLOAT, JVM_SIG_DOUBLE
 from pyjvm.types.clazz.jvmclass cimport JvmObjectFromJobject
 from pyjvm.types.converter.typeconverter cimport convert_to_bool, convert_to_byte, convert_to_char, convert_to_short, convert_to_int, convert_to_long, convert_to_float, convert_to_double, convert_to_object
 
-cdef object CreateJvmArray(Jvm jvm, jarray jarray, char* c_sig):
-    cdef str signature = c_sig.decode("utf-8")
-
-    if signature[1] == JvmSignature.CLASS:
-        return JvmObjectArray(<unsigned long long>jarray, signature, jvm)
-    elif signature[1] == JvmSignature.ARRAY:
+cdef object CreateJvmArray(Jvm jvm, jarray jarray, const char* c_sig):
+    if c_sig[1] == JVM_SIG_CLASS:
+        return JvmObjectArray(<unsigned long long>jarray, c_sig, jvm)
+    elif c_sig[1] == JVM_SIG_ARRAY:
         raise NotImplementedError("Nested arrays not supported yet")
-    elif signature[1] == JvmSignature.BYTE:
-        return JvmByteArray(<unsigned long long>jarray, signature, jvm)
+    elif c_sig[1] == JVM_SIG_BYTE:
+        return JvmByteArray(<unsigned long long>jarray, c_sig, jvm)
     else:
-        return JvmPrimitiveArray(<unsigned long long>jarray, signature, jvm)
+        return JvmPrimitiveArray(<unsigned long long>jarray, c_sig, jvm)
 
 cdef class JvmArray:
     #cdef jarray _jarray
-    #cdef str signature 
+    #cdef str._signature 
     #cdef Jvm jvm
     #cdef int current_index
+
+    @property
+    def signature(self):
+        return self._signature.decode("utf-8")
 
     @property
     def _jobject(self):
         return <unsigned long long>self._jarray
 
 
-    def __init__(self, unsigned long long arr, char* signature, Jvm jvm):
+    def __init__(self, unsigned long long arr, const char* signature, Jvm jvm):
         cdef JNIEnv* jni = jvm.getEnv()
         cdef jobject noid = jni[0].NewGlobalRef(jni, <jobject>arr)
+        cdef int siglen
         jni[0].DeleteLocalRef(jni, <jobject>arr)
 
         self._jarray = noid
-        self.signature = signature
+
+        siglen = strlen(signature)
+        self._signature = <const char*>malloc(sizeof(char) * siglen + 1)
+        strcpy(self._signature, signature)
+
         self.jvm = jvm
         self.current_index = 0
     
     def __dealloc__(self):
         cdef JNIEnv* jni = self.jvm.getEnv()
         jni[0].DeleteGlobalRef(jni, self._jarray)
+        free(self._signature)
 
 
     cdef length(self):
@@ -55,10 +64,6 @@ cdef class JvmArray:
 
     def __str__(self):
         return f"JvmArray {self.signature} with length {self.length()}"
-
-    @property
-    def signature(self):
-        return self.signature
     
     def __len__(self):
         return self.length()
@@ -99,7 +104,7 @@ cdef class JvmArray:
     
 
     def __eq__(self, other):
-        if isinstance(other, JvmPrimitiveArray):
+        if isinstance(other, JvmArray):
             return self.to_list() == other.to_list()
         elif isinstance(other, list):
             return self.to_list() == other
@@ -138,24 +143,24 @@ cdef class JvmObjectArray(JvmArray):
 cdef class JvmPrimitiveArray(JvmArray):
 
     cdef void set(self, int offset, object value) except *:
-        if self.signature[1] == JvmSignature.BOOLEAN:
+        if self._signature[1] == JVM_SIG_BOOLEAN:
             self.set_bool(self.jvm.getEnv(), self._jarray, offset, value, self.jvm)
-        elif self.signature[1] == JvmSignature.BYTE:
+        elif self._signature[1] == JVM_SIG_BYTE:
             self.set_byte(self.jvm.getEnv(), self._jarray, offset, value, self.jvm)
-        elif self.signature[1] == JvmSignature.CHAR:
+        elif self._signature[1] == JVM_SIG_CHAR:
             self.set_char(self.jvm.getEnv(), self._jarray, offset, value, self.jvm)
-        elif self.signature[1] == JvmSignature.SHORT:
+        elif self._signature[1] == JVM_SIG_SHORT:
             self.set_short(self.jvm.getEnv(), self._jarray, offset, value, self.jvm)
-        elif self.signature[1] == JvmSignature.INT:
+        elif self._signature[1] == JVM_SIG_INT:
             self.set_int(self.jvm.getEnv(), self._jarray, offset, value, self.jvm)
-        elif self.signature[1] == JvmSignature.LONG:
+        elif self._signature[1] == JVM_SIG_LONG:
             self.set_long(self.jvm.getEnv(), self._jarray, offset, value, self.jvm)
-        elif self.signature[1] == JvmSignature.FLOAT:
+        elif self._signature[1] == JVM_SIG_FLOAT:
             self.set_float(self.jvm.getEnv(), self._jarray, offset, value, self.jvm)
-        elif self.signature[1] == JvmSignature.DOUBLE:
+        elif self._signature[1] == JVM_SIG_DOUBLE:
             self.set_double(self.jvm.getEnv(), self._jarray, offset, value, self.jvm)
         else:
-            raise NotImplementedError("Primitive array type {} not supported".format(self._signature[1]))
+            raise NotImplementedError("Primitive array type {} not supported".format(self.signature))
 
 
     cdef void set_bool(self, JNIEnv* env, jarray array, int index, object value, Jvm jvm) except *:
@@ -201,24 +206,24 @@ cdef class JvmPrimitiveArray(JvmArray):
 
     cdef tuple get(self, int start, int length):
 
-        if self.signature[1] == JvmSignature.BOOLEAN:
+        if self._signature[1] == JVM_SIG_BOOLEAN:
             return self.get_bool(self.jvm.getEnv(), self._jarray, start, length)
-        elif self.signature[1] == JvmSignature.BYTE:
+        elif self._signature[1] == JVM_SIG_BYTE:
             return self.get_byte(self.jvm.getEnv(), self._jarray, start, length)
-        elif self.signature[1] == JvmSignature.CHAR:
+        elif self._signature[1] == JVM_SIG_CHAR:
             return self.get_char(self.jvm.getEnv(), self._jarray, start, length)
-        elif self.signature[1] == JvmSignature.SHORT:
+        elif self._signature[1] == JVM_SIG_SHORT:
             return self.get_short(self.jvm.getEnv(), self._jarray, start, length)
-        elif self.signature[1] == JvmSignature.INT:
+        elif self._signature[1] == JVM_SIG_INT:
             return self.get_int(self.jvm.getEnv(), self._jarray, start, length)
-        elif self.signature[1] == JvmSignature.LONG:
+        elif self._signature[1] == JVM_SIG_LONG:
             return self.get_long(self.jvm.getEnv(), self._jarray, start, length)
-        elif self.signature[1] == JvmSignature.FLOAT:
+        elif self._signature[1] == JVM_SIG_FLOAT:
             return self.get_float(self.jvm.getEnv(), self._jarray, start, length)
-        elif self.signature[1] == JvmSignature.DOUBLE:
+        elif self._signature[1] == JVM_SIG_DOUBLE:
             return self.get_double(self.jvm.getEnv(), self._jarray, start, length)
         else:
-            raise NotImplementedError("Primitive array type {} not supported".format(self._signature[1]))
+            raise NotImplementedError("Primitive array type {} not supported".format(self.signature))
 
             
 

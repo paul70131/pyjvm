@@ -3,7 +3,7 @@
 from pyjvm.c.jni cimport jvalue, jboolean, jbyte, jchar, jshort, jint, jlong, jfloat, jdouble, jobject
 from pyjvm.jvm cimport Jvm
 
-cdef jvalue convert_to_java(str jsignature, object pyobj, Jvm jvm) except *
+cdef jvalue convert_to_java(char* jsignature, object pyobj, Jvm jvm) except *
 
 cdef jboolean convert_to_bool(object pyobj) except *
 
@@ -21,4 +21,4 @@ cdef jfloat convert_to_float(object pyobj) except *
 
 cdef jdouble convert_to_double(object pyobj) except *
 
-cdef jobject convert_to_object(object pyobj, Jvm jvm, str parent=?) except *
+cdef jobject convert_to_object(object pyobj, Jvm jvm, char* parent=?) except *

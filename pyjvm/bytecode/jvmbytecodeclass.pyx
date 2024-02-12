@@ -2,7 +2,9 @@
 from pyjvm.c.jni cimport jclass, JNIEnv, jint
 from pyjvm.c.jvmti cimport jvmtiEnv, jvmtiError
 from pyjvm.jvm cimport Jvm
+
 from libc.stdlib cimport free, malloc
+from libc.string cimport strcpy
 
 from pyjvm.exceptions.exception import JvmtiException
 from pyjvm.bytecode.annotations import JvmFieldAnnotation
@@ -64,8 +66,17 @@ cdef class JvmBytecodeClass:
         cdef JvmMethodSignature descriptor
         cdef JvmMethod to_override
         cdef bint call_super = False
+        cdef str signature = getattr(func, "__jsignature")
+        cdef char* jsignature
+
         if not override:
-            descriptor = JvmMethodSignature(getattr(func, "__jsignature"))
+            jsignature = <char*>malloc(sizeof(char) * len(signature))
+            pybytes = signature.encode("utf-8")
+            strcpy(jsignature, pybytes)
+            
+
+            descriptor = JvmMethodSignature(True)
+            descriptor._signature = jsignature
             access_flags = 0x0001
             name = func.__name__
             if name == "__init__":
@@ -86,7 +97,7 @@ cdef class JvmBytecodeClass:
                 raise TypeError(f"Cannot override overloaded methods yet")
 
             access_flags = to_override._modifiers
-            name = to_override._name
+            name = to_override.name
             descriptor = to_override._overloads[0].signature
 
             self.methods.add_new(self.constant_pool, access_flags, name, descriptor, jvm, func, klass)

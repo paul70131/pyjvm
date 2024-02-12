@@ -170,10 +170,10 @@ cdef class JvmBoundMethod:
             if jargs == NULL:
                 continue
 
-            _, ret_type = overload.signature.parse()
+            overload.signature.parse() # ensure parsed
 
             mid = overload._method_id
-            ret = self.call(mid, jargs, ret_type)
+            ret = self.call(mid, jargs, overload.signature.return_type)
 
             free(jargs)
         

@@ -98,8 +98,7 @@ class TestStaticMethods(TestCase):
         class TestPyObject:
             def __init__(self, value):
                 self.value = value
-            
-        
+
         tobj = TestPyObject(123)
         i = test_class.get_int(tobj, "value")
         self.assertEqual(i, 123)

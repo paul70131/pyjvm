@@ -57,7 +57,7 @@ cdef class JvmClass:
                 continue
 
             
-            _, ret_type = overload.signature.parse()
+            overload.signature.parse()
 
             mid = overload._method_id
 
@@ -397,13 +397,15 @@ cdef object JvmClassFromJclass(unsigned long long cid, Jvm jvm, object top_base=
     superclass = jni[0].GetSuperclass(jni, new_cid)
     bases = (top_base,)
     if superclass != NULL:
-        top_base = JvmClassMeta._special_ancestors.get(py_name, JvmClass)
+        special = JvmClassMeta._special_ancestors.get(py_name, None)
         base = JvmClassFromJclass(<unsigned long long>superclass, jvm, top_base=top_base)
-        bases = (base,)
+        if special:
+            bases = (base, special)
+        else:
+            bases = (base,)
     
-
     c = JvmClassMeta(py_name, bases, {'_jclass':cid, 'signature': py_signature, 'jvm': jvm, 'interfaces' : py_interfaces})
-    jvm.__classes[cid] = c
+    jvm.__classes[py_name] = c
 
 
 

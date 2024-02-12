@@ -124,6 +124,8 @@ JAVA_HOME = os.environ.get("JAVA_HOME", None)
 # Compile java files
 
 Cython.Compiler.Options.annotate = True
+Cython.Compiler.Options._directive_defaults['profile'] = True
+
 j_classes = []
 for f in os.walk("pyjvm/bridge/java"):
     for file in f[2]:
@@ -148,7 +150,7 @@ for f in os.walk("pyjvm/bridge/scala"):
 setup(
     name='pyjvm',
     description="Python Bindings for the JVM (jni & jvmti)",
-    ext_modules=cythonize(extensions, language_level=3, build_dir="build/c", annotate=True),
+    ext_modules=cythonize(extensions, language_level=3, build_dir="build/c", annotate=True, compiler_directives={'profile': True, 'linetrace': True, 'embedsignature': True}),
     packages=find_packages(".") + ["pyjvm.bridge"],
     package_dir={'pyjvm': 'pyjvm'},
     #b

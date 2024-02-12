@@ -2,6 +2,8 @@ from unittest import TestCase
 
 from test.utils.java import compile_java
 
+import faulthandler
+
 from pyjvm.jvm import Jvm
 
 class TestPrimitiveArray(TestCase):

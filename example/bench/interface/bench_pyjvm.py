@@ -15,11 +15,12 @@ def benchmark_pyjvm():
     System = jvm.findClass('java/lang/System')
 
     # Create Java objects from Python
-    for _ in range(10000):
+    for _ in range(100000):
         obj = MyClass()
     
-    for _ in range(10000):
+    for _ in range(100000):
         obj = System.getenv()
+        obj.toString()
 
     # End the timer
     end_time = time.time()
@@ -30,7 +31,4 @@ def benchmark_pyjvm():
     print(f"Time taken to create 1000000 Java objects: {elapsed_time} seconds")
 
 if __name__ == "__main__":
-    cProfile.runctx("benchmark_pyjvm()", globals(), locals(), "Profile.prof")
-    import pstats
-    p = pstats.Stats("Profile.prof")
-    p.sort_stats("time").print_stats()
+    benchmark_pyjvm()

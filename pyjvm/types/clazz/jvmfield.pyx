@@ -32,7 +32,7 @@ cdef class JvmField:
 
     @property
     def name(self):
-        return self._name
+        return self._name.decode("utf-8")
 
     @property
     def signature(self):
@@ -121,11 +121,11 @@ cdef class JvmField:
         #return <unsigned long long>value
         return JvmObjectFromJobject(<unsigned long long>value, jvm)
     
-    cdef object get_array(self, JNIEnv* env, jclass cid, jfieldID fid, char* signature, Jvm jvm):
+    cdef object get_array(self, JNIEnv* env, jclass cid, jfieldID fid, Jvm jvm):
         cdef jarray value
         value = env[0].GetStaticObjectField(env, cid, fid)
         JvmExceptionPropagateIfThrown(jvm)
-        return CreateJvmArray(jvm, value, signature)
+        return CreateJvmArray(jvm, value, self._signature)
     
     cpdef object get(self, object clazz):
         cdef Jvm jvm = clazz.jvm
@@ -152,7 +152,7 @@ cdef class JvmField:
         elif self._signature[0] == JVM_SIG_SHORT:
             return self.get_short(env, cid, fid, jvm)
         elif self._signature[0] == JVM_SIG_ARRAY:
-            return self.get_array(env, cid, fid, self._signature, jvm)
+            return self.get_array(env, cid, fid, jvm)
         elif self._signature[0] == JVM_SIG_CLASS:
             return self.get_object(env, cid, fid, jvm)
         else:
@@ -255,13 +255,13 @@ cdef class JvmField:
         name += self._signature.decode("utf-8") + " " + self._name.decode("utf-8")
         return name
     
-    def __init__(self, char* name, char* signature, int modifiers, object clazz):
-        self._name = name
-        self._signature = signature
+    def __init__(self, int modifiers, object clazz):
+        self._name = NULL
+        self._signature = NULL
         self._modifiers = modifiers
         self._clazz = clazz
 
-cdef JvmFieldFromJfieldID(jfieldID fid, jclass cid, object clazz):
+cdef JvmField JvmFieldFromJfieldID(jfieldID fid, jclass cid, object clazz):
     cdef Jvm jvm = clazz.jvm
     cdef jvmtiEnv* jvmti = jvm.jvmti
 
@@ -279,8 +279,9 @@ cdef JvmFieldFromJfieldID(jfieldID fid, jclass cid, object clazz):
     if error != 0:
         raise Exception("Failed to get field modifiers")
 
-
-    f = JvmField(name, signature, modifiers, clazz)
+    f = JvmField(modifiers, clazz)
+    f._name = name
+    f._signature = signature
     f._fid = fid
     return f
 

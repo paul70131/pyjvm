@@ -8,5 +8,5 @@ cdef class JvmMethodLink:
     cdef object method
     cdef JvmMethodSignature signature
 
-    cdef list _convert_args(self, list arg_types, object args)
+    cdef list _convert_args(self, object args)
     cdef jobject invoke(self, Jvm jvm, object args)

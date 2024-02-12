@@ -6,7 +6,7 @@ from pyjvm.jvm cimport Jvm
 cdef class JvmField:
     cdef jfieldID _fid
     cdef char* _name
-    cdef char* _signature
+    cdef const char* _signature
     cdef int _modifiers
     cdef object _clazz
 
@@ -21,7 +21,7 @@ cdef class JvmField:
     cdef object get_float(self, JNIEnv* env, jclass clazz, jfieldID fid, Jvm jvm)
     cdef object get_double(self, JNIEnv* env, jclass clazz, jfieldID fid, Jvm jvm)
     cdef object get_object(self, JNIEnv* env, jclass clazz, jfieldID fid, Jvm jvm)
-    cdef object get_array(self, JNIEnv* env, jclass clazz, jfieldID fid, char* signature, Jvm jvm)
+    cdef object get_array(self, JNIEnv* env, jclass clazz, jfieldID fid, Jvm jvm)
 
     cpdef void set(self, object clazz, object value) except *
 
@@ -38,4 +38,4 @@ cdef class JvmField:
 
 
 
-cdef JvmFieldFromJfieldID(jfieldID fid, jclass cid, object clazz)
+cdef JvmField JvmFieldFromJfieldID(jfieldID fid, jclass cid, object clazz)
