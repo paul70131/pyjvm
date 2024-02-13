@@ -2,7 +2,7 @@ class BytecodeWriter:
     data: list[int]
     bc_offset: int
 
-    def __init__(self, line_number_table):
+    def __init__(self, line_number_table = None):
         self.data = []
         self.bc_offset = 0
         self.line_number_table = line_number_table

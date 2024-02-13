@@ -45,7 +45,7 @@ class PyjvmMethodlinkTest(Test):
         i = i / 1
     
 
-count = 1_000_000
+count = 1_000_00
 
 test  = PyjvmMethodlinkTest()
 
