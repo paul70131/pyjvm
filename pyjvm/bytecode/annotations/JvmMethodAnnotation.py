@@ -1,12 +1,16 @@
 from inspect import signature
 import dis
 
+from pyjvm.bytecode.annotations.JvmFieldAnnotation import JvmFieldAnnotation
 
 
 def __arg_to_jvm_type(arg, rtype = False):
     from pyjvm.types.clazz.jvmclass import JvmClassMeta
 
     if isinstance(arg, JvmClassMeta):
+        return arg.signature
+    
+    if isinstance(arg, JvmFieldAnnotation):
         return arg.signature
 
     if rtype:

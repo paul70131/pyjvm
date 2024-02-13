@@ -22,6 +22,12 @@ cdef class JvmBytecodeAttributes(JvmBytecodeComponent):
         
     cpdef add(self, JvmBytecodeAttribute field)
 
+
+cdef class LineNumberTableAttribute(JvmBytecodeAttribute):
+    cdef list line_numbers
+
+    cdef unsigned int size(self) except 0
+    cdef unsigned int render(self, unsigned char* buffer) except 0
     
 cdef class ConstantValueAttribute(JvmBytecodeAttribute):
     cdef unsigned short constant_value_index
@@ -46,7 +52,7 @@ cdef class CodeAttribute(JvmBytecodeAttribute):
     cdef unsigned int code_length
     cdef unsigned char* code
     cdef CodeAttributeExcetionTable exception_table
-    cdef JvmBytecodeAttributes attributes
+    cdef public JvmBytecodeAttributes attributes
 
     cdef unsigned int render(self, unsigned char* buffer) except 0
     cdef unsigned int size(self) except *
@@ -76,13 +82,6 @@ cdef class StackMapTableAttribute(JvmBytecodeAttribute):
 
     cdef unsigned int size(self) except 0
     cdef unsigned int render(self, unsigned char* buffer) except 0
-
-cdef class LineNumberTableAttributeEntry:
-    cdef unsigned short start_pc
-    cdef unsigned short line_number
-
-cdef class LineNumberTableAttribute(JvmBytecodeAttribute):
-    cdef list[LineNumberTableAttributeEntry] entries
 
 cdef class LocalVariableTableAttributeEntry:
     cdef unsigned short start_pc

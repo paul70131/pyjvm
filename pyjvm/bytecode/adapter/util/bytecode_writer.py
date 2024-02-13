@@ -2,12 +2,20 @@ class BytecodeWriter:
     data: list[int]
     bc_offset: int
 
-    def __init__(self):
+    def __init__(self, line_number_table):
         self.data = []
         self.bc_offset = 0
+        self.line_number_table = line_number_table
+        self.line_offset = 1
+
+    def nextLine(self, line:int = -1):
+        if line == -1:
+            line = self.line_offset + 1
+        self.line_number_table.append(self.bc_offset, line)
+        self.line_offset = line
 
     def _write(self, v:int):
-        if v > 0xff:
+        if v < 0 or v > 0xff:
             raise Exception("BytecodeWriter._write: value too large")
         self.data.append(v)
 

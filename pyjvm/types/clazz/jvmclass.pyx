@@ -184,6 +184,7 @@ class JvmClassMeta(type):
         return JvmObjectFromJobject(<unsigned long long>loader, jvm)
 
     def __inherit(name, bases, attrs):
+        cdef Jvm jvm
         if not isinstance(bases[0], JvmClassMeta):
             raise TypeError("cannot inherit from non-JvmClass")
         
@@ -195,6 +196,11 @@ class JvmClassMeta(type):
             if cl:
                 break
             cl = base.getClassLoader()
+        
+        if not cl:
+            jvm = bases[0].jvm
+            bridge = jvm.findClass("pyjvm/bridge/java/PyjvmBridge")
+            cl = bridge.getClassLoader()
         
         bytecodeClass = JvmBytecodeClass.inherit(bases[0], fullname, attrs, list(bases[1:]) if len(bases) > 1 else [])
         return bytecodeClass.insert(bases[0].jvm, cl, fullname)

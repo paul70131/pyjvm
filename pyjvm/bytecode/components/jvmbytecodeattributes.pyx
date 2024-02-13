@@ -137,6 +137,44 @@ cdef class CodeAttribute(JvmBytecodeAttribute):
     cdef unsigned int size(self) except *:
         return 6 + 8 + self.code_length + self.exception_table.size() + self.attributes.size()
 
+cdef class LineNumberTableAttribute(JvmBytecodeAttribute):
+
+    def __init__(self, JvmBytecodeConstantPool cp):
+        self.attribute_name_index = cp.find_string("LineNumberTable", True).offset
+        self.attribute_length = 0
+        self.line_numbers = []
+
+    cdef unsigned int render(self, unsigned char* buffer) except 0:
+        cdef unsigned int length = self.size() - 6
+        cdef unsigned short entry_count = len(self.line_numbers)
+        cdef unsigned short i = 0
+        cdef unsigned short line_number
+        cdef unsigned short start_pc
+
+        buffer[0] = (self.attribute_name_index >> 8) & 0xFF
+        buffer[1] = self.attribute_name_index & 0xFF
+        buffer[2] = (length >> 24) & 0xFF
+        buffer[3] = (length >> 16) & 0xFF
+        buffer[4] = (length >> 8) & 0xFF
+        buffer[5] = length & 0xFF
+        buffer[6] = (entry_count >> 8) & 0xFF
+        buffer[7] = entry_count & 0xFF
+
+        for start_pc, line_number in self.line_numbers:
+            buffer[8 + i] = (start_pc >> 8) & 0xFF
+            buffer[9 + i] = start_pc & 0xFF
+            buffer[10 + i] = (line_number >> 8) & 0xFF
+            buffer[11 + i] = line_number & 0xFF
+            i += 4
+
+        return 8 + i
+
+    cdef unsigned int size(self) except 0:
+        return 8 + 4 * len(self.line_numbers)
+
+    def append(self, unsigned short start_pc, unsigned short line_number):
+        self.line_numbers.append((start_pc, line_number))
+
 
 cdef class ConstantValueAttribute(JvmBytecodeAttribute):
 #    cdef unsigned short attribute_name_index

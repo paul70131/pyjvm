@@ -15,14 +15,14 @@ class LOAD_CONST(PyOpcode):
         # 1. LOAD_ATTR (JvmType) simply does a "getfield" on the object
         # 2. LOAD_ATTR (PythonType) does a "invokevirtual" on the object. Therefore we need to jump accordingly
 
-    def transpile(self, bytecode: BytecodeWriter, pystack_offset: int, pystack_index: int, cp) -> int:
+    def transpile(self, bytecode: BytecodeWriter, pystack_offset: int, pystack_index: int, pylocals_index: int, cp, m) -> int:
         bytecode.bc(Opcodes.ALOAD)
         bytecode.u1(pystack_index)
         # stack: [..., pystack]
         if isinstance(self.value, int):
-            entry = cp.find_integer(self.value, True)
+            entry = cp.find_long(self.value, True)
         elif isinstance(self.value, float):
-            entry = cp.find_float(self.value, True)
+            entry = cp.find_double(self.value, True)
         elif isinstance(self.value, str):
             entry = cp.find_jstring(self.value, True)
         elif self.value == None:
@@ -38,16 +38,19 @@ class LOAD_CONST(PyOpcode):
         if self.value is None:
             bytecode.bc(Opcodes.ACONST_NULL)
         else:
-            bytecode.bc(Opcodes.LDC_W)
+            if isinstance(self.value, int) or isinstance(self.value, float):
+                bytecode.bc(Opcodes.LDC2_W)
+            else:
+                bytecode.bc(Opcodes.LDC_W)
             bytecode.u2(entry.offset)
 
 
         if isinstance(self.value, int):
-            entry = cp.find_methodref("java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", True)
+            entry = cp.find_methodref("java/lang/Long", "valueOf", "(J)Ljava/lang/Long;", True)
             bytecode.bc(Opcodes.INVOKESTATIC)
             bytecode.u2(entry.offset)
         if isinstance(self.value, float):
-            entry = cp.find_methodref("java/lang/Float", "valueOf", "(F)Ljava/lang/Float;", True)
+            entry = cp.find_methodref("java/lang/Double", "valueOf", "(D)Ljava/lang/Double;", True)
             bytecode.bc(Opcodes.INVOKESTATIC)
             bytecode.u2(entry.offset)
         

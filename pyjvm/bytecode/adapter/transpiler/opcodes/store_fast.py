@@ -5,32 +5,27 @@ from dis import Instruction
 from pyjvm.bytecode.adapter.util.bytecode_writer import BytecodeWriter
 from pyjvm.bytecode.adapter.util.opcodes import Opcodes
 
-class DUP_TOP(PyOpcode):
-    opcode = 4
+class STORE_FAST(PyOpcode):
+    opcode = 125
 
     def __init__(self, inst: Instruction):
-        pass
+        self.index = inst.arg
 
     def transpile(self, bytecode: BytecodeWriter, pystack_offset: int, pystack_index: int, pylocals_index: int, cp, m) -> int:
+        pystack_offset -= 1
+
+        bytecode.bc(Opcodes.ALOAD)
+        bytecode.u1(pylocals_index)
+
+        bytecode.bc(Opcodes.BIPUSH)
+        bytecode.u1(self.index)
+
         bytecode.bc(Opcodes.ALOAD)
         bytecode.u1(pystack_index)
-        # stack: [..., pystack]
         bytecode.bc(Opcodes.BIPUSH)
         bytecode.u1(pystack_offset + 1)
-        # stack: [..., pystack, pystack_offset]
-
-        bytecode.bc(Opcodes.ALOAD)
-        bytecode.u1(pystack_index)
-        # stack: [..., pystack, pystack_offset, pystack]
-
-        bytecode.bc(Opcodes.BIPUSH)
-        bytecode.u1(pystack_offset)
-        # stack: [..., pystack, pystack_offset, pystack, 0]
-
         bytecode.bc(Opcodes.AALOAD)
-        # stack: [..., pystack, pystack_offset, pystack[pystack_offset]]
 
         bytecode.bc(Opcodes.AASTORE)
 
-        return pystack_offset + 1
-
+        return pystack_offset

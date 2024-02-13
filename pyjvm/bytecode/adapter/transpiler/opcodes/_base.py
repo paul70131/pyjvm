@@ -8,5 +8,5 @@ class PyOpcode:
     def __init_subclass__(cls) -> None:
         PyOpcode.opcodes[cls.opcode] = cls
 
-    def transpile(bytecode: BytecodeWriter, pystack_offset: int, pystack_index: int, cp) -> int:
+    def transpile(bytecode: BytecodeWriter, pystack_offset: int, pystack_index: int, pylocals_index: int, cp, m) -> int:
         raise NotImplementedError

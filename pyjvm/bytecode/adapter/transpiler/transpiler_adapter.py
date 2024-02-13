@@ -5,7 +5,7 @@ from pyjvm.bytecode.adapter.util.opcodes import Opcodes
 from pyjvm.bytecode.adapter.transpiler.transpiler import TranspiledMethod
 
 from pyjvm.bytecode.components.jvmbytecodemethods import JvmBytecodeMethod
-from pyjvm.bytecode.components.jvmbytecodeattributes import CodeAttribute
+from pyjvm.bytecode.components.jvmbytecodeattributes import CodeAttribute, LineNumberTableAttribute
 
 import os
 import io
@@ -24,14 +24,16 @@ class TranspilerAdapter(MethodAdapter):
         cp_name = cp.find_string(name, True)
         cp_descriptor = cp.find_string(descriptor.signature, True)
         bc_method = JvmBytecodeMethod(access_flags, cp_name.offset, cp_descriptor.offset)
+        line_number_table = LineNumberTableAttribute(cp)
 
-        tp = TranspiledMethod(cp, name, method)
+        tp = TranspiledMethod(cp, name, method, line_number_table, descriptor)
         tp.transpile()
 
         max_stack = 10 # TODO calculate
         max_locals = 10 # TODO calculate
 
         code_attribute = CodeAttribute(max_stack, max_locals, tp.bytecode.bytes(), tp.bytecode.size(), cp)
+        code_attribute.attributes.add(line_number_table)
         bc_method.attributes.add(code_attribute)
 
         return bc_method

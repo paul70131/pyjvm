@@ -5,31 +5,24 @@ from dis import Instruction
 from pyjvm.bytecode.adapter.util.bytecode_writer import BytecodeWriter
 from pyjvm.bytecode.adapter.util.opcodes import Opcodes
 
-class INPLACE_ADD(PyOpcode):
-    opcode = 55
+class INPLACE_MULTIPLY(PyOpcode):
+    opcode = 57
 
     def __init__(self, inst: Instruction):
         pass
 
-    def transpile(self, bytecode: BytecodeWriter, pystack_offset: int, pystack_index: int, cp) -> int:
+    def transpile(self, bytecode: BytecodeWriter, pystack_offset: int, pystack_index: int, pylocals_index: int, cp, m) -> int:
 
         bytecode.bc(Opcodes.ALOAD)
         bytecode.u1(pystack_index)
         bytecode.bc(Opcodes.DUP)
         # stack: [..., pystack]
         bytecode.bc(Opcodes.BIPUSH)
-        bytecode.u1(pystack_offset)
+        bytecode.u1(pystack_offset - 1)
         # stack: [..., pystack, pystack_offset]
 
         bytecode.bc(Opcodes.AALOAD)
         # stack: [..., pystack[pystack_offset]]
-
-        bytecode.bc(Opcodes.CHECKCAST)
-        bytecode.u2(cp.find_class("java/lang/Integer", True).offset)
-        bytecode.bc(Opcodes.INVOKEVIRTUAL)
-        bytecode.u2(cp.find_methodref("java/lang/Integer", "intValue", "()I", True).offset)
-
-        pystack_offset -= 1
 
         bytecode.bc(Opcodes.ALOAD)
         bytecode.u1(pystack_index)
@@ -41,15 +34,8 @@ class INPLACE_ADD(PyOpcode):
         bytecode.bc(Opcodes.AALOAD)
         # stack: [..., pystack[pystack_offset], pystack[pystack_offset]]
 
-        bytecode.bc(Opcodes.CHECKCAST)
-        bytecode.u2(cp.find_class("java/lang/Integer", True).offset)
-        bytecode.bc(Opcodes.INVOKEVIRTUAL)
-        bytecode.u2(cp.find_methodref("java/lang/Integer", "intValue", "()I", True).offset)
-
-        bytecode.bc(Opcodes.IADD)
-
         bytecode.bc(Opcodes.INVOKESTATIC)
-        bytecode.u2(cp.find_methodref("java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", True).offset)
+        bytecode.u2(cp.find_methodref("pyjvm/bridge/java/PyjvmBridge", "__mul__", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", True).offset)
 
         bytecode.bc(Opcodes.BIPUSH)
         bytecode.u1(pystack_offset)
@@ -58,4 +44,7 @@ class INPLACE_ADD(PyOpcode):
 
         bytecode.bc(Opcodes.AASTORE)
 
-        return pystack_offset
+        return pystack_offset - 1
+
+class BINARY_MULTIPLY(INPLACE_MULTIPLY):
+    opcode = 20
