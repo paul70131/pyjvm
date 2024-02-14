@@ -21,3 +21,7 @@ class Stack(LifoQueue):
         s = Stack()
         s.queue = self.queue.copy()
         return s
+    
+    @property
+    def depth(self):
+        return len(self.queue)

@@ -15,7 +15,7 @@ with open("example/bench/adapter/jvm/Test.class", "rb") as f:
 class PyjvmMethodlinkTest(Test):
     i: Int = 0
 
-    @Override
+    """  @Override
     def test(self):
         i = 0
         i += self.test2(i)
@@ -38,7 +38,7 @@ class PyjvmMethodlinkTest(Test):
         i = i + i
         i = i - i
         i = i * i
-        i = i / 1
+        i = i / 1 """
 
     @Method
     def test4(self):

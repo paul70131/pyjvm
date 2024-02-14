@@ -6,7 +6,6 @@ class BytecodeLabel:
         self.bc_offset = -1
 
     def resolve(self, offset: int):
-        print(f"Resolving label {self.target} to {offset}, {self.bc_offset}")
         self.offset = offset - self.bc_offset + 1
 
 class BytecodeWriter:

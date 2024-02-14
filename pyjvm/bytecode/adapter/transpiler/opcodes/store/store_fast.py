@@ -18,7 +18,7 @@ class STORE_FAST(PyOpcode):
 
     def verify(self, frame: Frame):
         frame.locals[self.value] = frame.stack.pop()
-        frame.pc += 2
+        frame.pc += self.size
 
     def transpile(self, bc: BytecodeWriter, op_stack: Stack, locals: list, locals_offset: int, cp, m):
         # we need to pop the value from the stack and store it in the locals

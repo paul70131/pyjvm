@@ -18,6 +18,8 @@ class BINARY_ADD(PyOpcode):
     def verify(self, frame: Frame):
         v1 = frame.stack.pop()
         v2 = frame.stack.pop()
+        
+        frame.pc += self.size
 
         if isinstance(v1, ComptimeString) or isinstance(v2, ComptimeString):
             frame.stack.push(ComptimeString())
@@ -38,8 +40,7 @@ class BINARY_ADD(PyOpcode):
         if isinstance(v1, ComptimeObject) or isinstance(v2, ComptimeObject):
             frame.stack.push(ComptimeObject("java/lang/Object"))
             return
-        
-        frame.pc += self.size
+
 
 
 

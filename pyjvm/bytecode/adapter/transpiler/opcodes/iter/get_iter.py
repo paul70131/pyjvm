@@ -13,13 +13,12 @@ class GET_ITER(PyOpcode):
     opcode = 68
 
     def __init__(self, inst: Instruction):
-        self.value = inst.arg
+        self.value = inst.argval
 
     def verify(self, stack: Frame):
         # we need to pop the value from the stack and store it in the locals
         stack.stack.pop()
         stack.stack.push(ComptimeObject("java/util/Iterator"))
-
         stack.pc += self.size
     
 

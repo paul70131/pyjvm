@@ -18,6 +18,8 @@ class BINARY_SUBSCR(PyOpcode):
     def verify(self, frame: Frame):
         v1 = frame.stack.pop()
         v2 = frame.stack.pop()
+        
+        frame.pc += self.size
 
         if isinstance(v1, ComptimeLong) and isinstance(v2, ComptimeList):
             frame.stack.push(ComptimeObject(v2.subtype))
@@ -26,8 +28,8 @@ class BINARY_SUBSCR(PyOpcode):
         if isinstance(v1, ComptimeLong) and isinstance(v2, ComptimeTuple):
             frame.stack.push(ComptimeObject(v2.subtype))
             return
-
-        frame.pc += self.size
+        
+        raise Exception(f"Unsupported operation subscript: {v1} - {v2}")
 
     def transpile(self, bc: BytecodeWriter, op_stack: Stack, locals: list, locals_offset: int, cp, m):
         v1 = op_stack.pop()
@@ -51,3 +53,7 @@ class BINARY_SUBSCR(PyOpcode):
             return
 
         raise Exception(f"Unsupported operation subscript: {v1} - {v2}")
+    
+
+class STORE_SUBSCR(BINARY_SUBSCR):
+    opcode = 60

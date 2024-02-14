@@ -16,7 +16,9 @@ class PyOpcode:
     def verify(self, stack: Frame):
         raise NotImplementedError
     
-    def _verify(self, stack: Frame):
-        print("Verifying", self.__class__.__name__)
-        self.verify(stack)
+    def _verify(self, frame: Frame):
+        self.stack_depth = frame.stack.depth
+
+        more = self.verify(frame)
         self.verified = True
+        return more

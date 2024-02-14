@@ -22,7 +22,7 @@ class ROT_TWO(PyOpcode):
         frame.stack.push(v1)
         frame.stack.push(v2)
 
-        frame.pc += 2
+        frame.pc += self.size
 
     def transpile(self, bc: BytecodeWriter, op_stack: Stack, locals: list, locals_offset: int, cp, m):
         v1 = op_stack.pop()

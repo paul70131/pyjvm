@@ -24,7 +24,7 @@ class ROT_THREE(PyOpcode):
         frame.stack.push(a3)
         frame.stack.push(a2)
 
-        frame.pc += 2
+        frame.pc += self.size
 
     def transpile(self, bc: BytecodeWriter, op_stack: Stack, locals: list, locals_offset: int, cp, m):
         a1 = op_stack.pop()

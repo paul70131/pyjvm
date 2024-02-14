@@ -13,7 +13,7 @@ class JUMP_ABSOLUTE(PyOpcode):
     opcode = 113
 
     def __init__(self, inst: Instruction):
-        self.value = inst.arg
+        self.value = inst.argval
 
     def transpile(self, bc: BytecodeWriter, op_stack: Stack, locals: list, locals_offset: int, cp, m):
         # we need to pop the value from the stack and store it in the locals
@@ -23,9 +23,8 @@ class JUMP_ABSOLUTE(PyOpcode):
         bc.s2(self.target)
 
     def verify(self, stack: Frame):
-        stack.pc += 3
+        stack2 = stack.copy(self.target.offset)
         
-        stack2 = stack.copy()
-        stack2.pc += self.value
+        stack.pc += self.size
         return [stack2,]
 

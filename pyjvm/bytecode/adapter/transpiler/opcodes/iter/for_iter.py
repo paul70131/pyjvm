@@ -15,12 +15,19 @@ class FOR_ITER(PyOpcode):
     def __init__(self, inst: Instruction):
         self.value = inst.argval # resolved pc of python bytecode instruction
 
-    def verify(self, stack: Frame):
+    def verify(self, frame: Frame):
         # we need to pop the value from the stack and store it in the locals
-        tos = stack.stack.pop()
-        stack.stack.push(ComptimeObject("java/lang/Object"))
+        tos = frame.stack.pop()
+        frame.stack.push(ComptimeObject("java/util/Iterator"))
+        frame.stack.push(ComptimeObject("java/lang/Object"))
 
-        stack.pc += self.size
+        newframe = frame.copy(self.target.offset + 9) # length of this before ifeq  
+
+        # the newframe is if the iterator is empty.
+        newframe.stack.pop() # pop the iterator
+        frame.pc += self.size
+
+        return [newframe,]
 
 
 

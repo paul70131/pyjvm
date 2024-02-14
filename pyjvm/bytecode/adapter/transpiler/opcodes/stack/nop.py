@@ -18,7 +18,7 @@ class NOP(PyOpcode):
         self.value = inst.arg
 
     def verify(self, frame: Frame):
-        frame.pc += 1
+        frame.pc += self.size
 
     def transpile(self, bc: BytecodeWriter, op_stack: Stack, locals: list, locals_offset: int, cp, m):
         bc.bc(Opcodes.NOP)

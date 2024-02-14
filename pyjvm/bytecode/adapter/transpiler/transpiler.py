@@ -110,7 +110,8 @@ class TranspiledMethod:
 
         self.bytecode.nextLine()
         vframe = Frame(startlocals, start_pc)
-        self.verify(vframe, bcmap)
+        frames = self.verify(vframe, bcmap)
+        print(frames)
 
     def fill_labels(self, instructions: list[Instruction], bcmap: dict):
         labels = self.bytecode._labels
@@ -127,14 +128,19 @@ class TranspiledMethod:
         self.bytecode.save_labels()
 
     def verify(self, frame: Frame, bcmap: dict):
+        frames = []
         while not frame.returned:
             bc = bcmap[frame.pc]
             if bc.verified:
+                if bc.stack_depth != frame.stack.depth:
+                    raise Exception(f"Stack depth mismatch: {bc} - {frame.stack} : {bc.stack_depth} - {frame.stack.depth}, {frame.pc}")
                 break
-            nframes = bc._verify(frame)
-            if nframes:
-                for nframe in nframes:
-                    self.verify(nframe, bcmap)
+            newframes = bc._verify(frame)
+            if newframes:
+                for newframe in newframes:
+                    frames.append(newframe)
+                    self.verify(newframe, bcmap)
+        return frames
         
     
     def create_label(self, py_loc, size):
