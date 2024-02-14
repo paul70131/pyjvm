@@ -1,9 +1,15 @@
-from pyjvm.bytecode.adapter.util.bytecode_writer import BytecodeWriter
+from pyjvm.bytecode.adapter.util.bytecode_writer import BytecodeWriter, BytecodeLabel
 from pyjvm.bytecode.adapter.util.opcodes import Opcodes
 
+from pyjvm.bytecode.adapter.transpiler.comptime.types import ComptimeType, ComptimeLong, ComptimeDouble, ComptimeBoolean, ComptimeString, ComptimePyObject, ComptimeObject
+from pyjvm.bytecode.adapter.transpiler.comptime.stack import Stack
+from pyjvm.bytecode.adapter.transpiler.comptime.frame import Frame
+
 from .opcodes import get_opcode
+from queue import LifoQueue
 
 import dis
+from dis import Instruction
 
 from typing import Callable
 
@@ -58,6 +64,12 @@ class TranspiledMethod:
                 #cp = CP_String.insert(self.class_file.constant_pool, const)
                 cp = self.cp.find_jstring(const, True)
                 j_constants.append(cp)
+            elif isinstance(const, tuple):
+                # this is more complicated since java doesn't have a tuple type and can only have primitives in the constant pool.
+                # the loading of this constant will be done in the "LOAD_CONST" opcode
+                # in that opcode it will also be saved to the constant pool
+                # this is just here to register the tuple type
+                pass
             elif const is None:
                 pass
             else:
@@ -65,71 +77,73 @@ class TranspiledMethod:
             
     def write_bytecode(self):
         code = self.method.__code__
-        locals_offset = code.co_argcount # +1 for self
-
         # generate init bytecode
         # create pyStack array with size of co_stacksize
         #javaLangObject = CP_Class.insert(self.class_file.constant_pool, "java/lang/Object")
         javaLangObject = self.cp.find_class("java/lang/Object", True)
 
-        # bipush co_stacksize
-        self.bytecode.bc(Opcodes.BIPUSH)
-        if code.co_stacksize > 0xff:
-            raise Exception("Stacksize too large")
-        self.bytecode.u1(code.co_stacksize + 1) # 
-
-        # newarray java/lang/Object
-        self.bytecode.bc(Opcodes.ANEWARRAY)
-        self.bytecode.u2(javaLangObject.offset)
-
-        if locals_offset + 1 > 0xff:
-            raise Exception("Locals too large")
-
-        # astore locals_offset + 1
-        self.bytecode.bc(Opcodes.ASTORE)
-        self.bytecode.u1(locals_offset)
-    
-        pystack_index = locals_offset
-        pystack_offset = -1
-
-        # bipush co_locals
-        self.bytecode.bc(Opcodes.BIPUSH)
-        self.bytecode.u1(code.co_nlocals)
-
-        # newarray java/lang/Object
-        self.bytecode.bc(Opcodes.ANEWARRAY)
-        self.bytecode.u2(javaLangObject.offset)
-
-        # stack types are: java/lang/Object, java/lang/Double, java/lang/Long, pyjvm/bridge/java/PyObject
-        # these types need seperate handling for certain opcodes. Currently we dont asume any types and are 100% dynamic.
-        # to increase performance we could think about adding type information to the stack and locals array during bytecode generation.
-
-        # astore locals_offset + 2
-        self.bytecode.bc(Opcodes.ASTORE)
-        self.bytecode.u1(locals_offset + 1)
-        pylocals_index = locals_offset + 1
-
-        # copy all arguments to the pylocals array
-        self.do_arg_conversion(pylocals_index, code)
-
         self.bytecode.bc(Opcodes.NOP)
         self.bytecode.nextLine()
-        
-        for bc in dis.get_instructions(self.method):
+
+        op_stack = Stack()
+        locals = [None] * code.co_nlocals 
+        locals_offset = code.co_argcount
+
+        self.do_arg_conversion(locals_offset, locals, code)
+        startlocals = locals.copy()
+
+        bcmap = {}
+
+        start_pc = self.bytecode.size()
+        instructions = list(dis.get_instructions(self.method))
+        for bc in instructions:
             opc = get_opcode(bc.opcode, bc)
             if opc:
-                self.bytecode.bc(Opcodes.NOP) # for debugging to see where the bytecode ends
-                pystack_offset = opc.transpile(self.bytecode, pystack_offset, pystack_index, pylocals_index, self.cp, self)
-    
+                before = self.bytecode.size()
+                opc.transpile(self.bytecode, op_stack, locals, locals_offset, self.cp, self)
+                opc.size = self.bytecode.size() - before
+                opc.verified = False
+                opc.py_loc = bc.offset
+                bcmap[before] = opc
+
+        self.fill_labels(instructions, bcmap)
 
         self.bytecode.nextLine()
+        vframe = Frame(startlocals, start_pc)
+        self.verify(vframe, bcmap)
 
-    def do_arg_conversion(self, pylocals_index: int, code):
+    def fill_labels(self, instructions: list[Instruction], bcmap: dict):
+        labels = self.bytecode._labels
+        for label in labels:
+            label: BytecodeLabel
+            for loc, bc in bcmap.items():
+                if bc.py_loc == label.target:
+                    label.resolve(loc)
+                    break
+            
+            else:
+                raise Exception(f"Could not find label target: {label.target}")
+            
+        self.bytecode.save_labels()
+
+    def verify(self, frame: Frame, bcmap: dict):
+        while not frame.returned:
+            bc = bcmap[frame.pc]
+            if bc.verified:
+                break
+            nframes = bc._verify(frame)
+            if nframes:
+                for nframe in nframes:
+                    self.verify(nframe, bcmap)
+        
+    
+    def create_label(self, py_loc, size):
+        return BytecodeLabel(py_loc, size)
+
+
+    def do_arg_conversion(self, offset: int, locals, code):
+
         for i in range(code.co_argcount):
-            self.bytecode.bc(Opcodes.ALOAD)
-            self.bytecode.u1(pylocals_index)
-            self.bytecode.bc(Opcodes.BIPUSH)
-            self.bytecode.u1(i)
             # load pyLocals
             if i == 0:
                 sig = "L..." # self / this
@@ -139,33 +153,51 @@ class TranspiledMethod:
             if sig[0] == "L":
                 self.bytecode.bc(Opcodes.ALOAD)
                 self.bytecode.u1(i)
-                self.bytecode.bc(Opcodes.AASTORE)
-            elif sig == "I" or sig == "Z" or sig == "B" or sig == "C" or sig == "S":
+                self.bytecode.bc(Opcodes.ASTORE)
+                self.bytecode.u1(offset + i)
+
+                locals[i] = ComptimeObject(sig[1:])
+                
+            elif sig == "I" or sig == "B" or sig == "C" or sig == "S":
                 self.bytecode.bc(Opcodes.ILOAD)
                 self.bytecode.u1(i)
                 self.bytecode.bc(Opcodes.I2L)
                 self.bytecode.bc(Opcodes.INVOKESTATIC)
                 self.bytecode.u2(self.cp.find_methodref("java/lang/Long", "valueOf", "(J)Ljava/lang/Long;", True).offset)
-                self.bytecode.bc(Opcodes.AASTORE)
+                self.bytecode.bc(Opcodes.ASTORE)
+                self.bytecode.u1(offset + i)
+
+                locals[i] = ComptimeLong()
+
             elif sig == "L":
                 self.bytecode.bc(Opcodes.LLOAD)
                 self.bytecode.u1(i)
                 self.bytecode.bc(Opcodes.INVOKESTATIC)
                 self.bytecode.u2(self.cp.find_methodref("java/lang/Long", "valueOf", "(J)Ljava/lang/Long;", True).offset)
-                self.bytecode.bc(Opcodes.AASTORE)
+                self.bytecode.bc(Opcodes.ASTORE)
+                self.bytecode.u1(offset + i)
+
+                locals[i] = ComptimeLong()
+
             elif sig == "F":
                 self.bytecode.bc(Opcodes.FLOAD)
                 self.bytecode.u1(i)
                 self.bytecode.bc(Opcodes.F2D)
                 self.bytecode.bc(Opcodes.INVOKESTATIC)
                 self.bytecode.u2(self.cp.find_methodref("java/lang/Double", "valueOf", "(D)Ljava/lang/Double;", True).offset)
-                self.bytecode.bc(Opcodes.AASTORE)
+                self.bytecode.bc(Opcodes.ASTORE)
+                self.bytecode.u1(offset + i)
+
+                locals[i] = ComptimeDouble()
             elif sig == "D":
                 self.bytecode.bc(Opcodes.DLOAD)
                 self.bytecode.u1(i)
                 self.bytecode.bc(Opcodes.INVOKESTATIC)
                 self.bytecode.u2(self.cp.find_methodref("java/lang/Double", "valueOf", "(D)Ljava/lang/Double;", True).offset)
-                self.bytecode.bc(Opcodes.AASTORE)
+                self.bytecode.bc(Opcodes.ASTORE)
+                self.bytecode.u1(offset + i)
+
+                locals[i] = ComptimeDouble()
             else:
                 raise Exception(f"Unsupported type: {sig}")
 

@@ -211,6 +211,28 @@ cdef class JvmBytecodeConstantPool(JvmBytecodeComponent):
 
         raise Exception(f"NameAndType not found in CP: {name} {type}")
 
+    cpdef JvmBytecodeConstantPoolEntry find_interface_methodref(self, str classname, str methodname, str methodtype, bint put=False) except *:
+        cdef JvmBytecodeConstantPoolEntry entry
+        cdef JvmBytecodeConstantPoolEntry class_entry
+        cdef JvmBytecodeConstantPoolEntry nt_entry
+
+        class_entry = self.find_class(classname, put)
+        nt_entry = self.find_name_and_type(methodname, methodtype, put)
+
+        for entry in self.constant_pool:
+            if entry.tag == 11:
+                methodref_entry = <JBCPE_InterfaceMethodref>entry
+
+                if methodref_entry.class_index == class_entry.offset and methodref_entry.name_and_type_index == nt_entry.offset:
+                    return entry
+        
+        if put:
+            entry = JBCPE_InterfaceMethodref(class_entry.offset, nt_entry.offset)
+            self.add(entry)
+            return entry
+        
+        raise Exception(f"MethodRef not found in CP: {classname} {methodname} {methodtype}")
+
     cpdef JvmBytecodeConstantPoolEntry find_methodref(self, str classname, str methodname, str methodtype, bint put=False) except *:
         cdef JvmBytecodeConstantPoolEntry entry
         cdef JvmBytecodeConstantPoolEntry class_entry
@@ -387,8 +409,12 @@ cdef class JBCPE_InterfaceMethodref(JvmBytecodeConstantPoolEntry):
     cdef unsigned short class_index
     cdef unsigned short name_and_type_index
 
-    def __init__(self):
+    def __init__(self, unsigned short class_idx = 0, unsigned short name_and_type_idx = 0):
         self.tag = 11
+        if class_idx:
+            self.class_index = class_idx
+        if name_and_type_idx:
+            self.name_and_type_index = name_and_type_idx
     
     cpdef int size(self):
         return 5

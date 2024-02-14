@@ -1,0 +1,1 @@
+from .store_fast import STORE_FAST

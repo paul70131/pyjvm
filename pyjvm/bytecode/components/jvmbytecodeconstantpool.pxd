@@ -20,6 +20,7 @@ cdef class JvmBytecodeConstantPool(JvmBytecodeComponent):
     cpdef JvmBytecodeConstantPoolEntry find_jstring(self, str py_string, bint put=?) except *
     cpdef JvmBytecodeConstantPoolEntry find_name_and_type(self, str name, str type_, bint put=?) except *
     cpdef JvmBytecodeConstantPoolEntry find_methodref(self, str classname, str methodname, str methodtype, bint put=?) except *
+    cpdef JvmBytecodeConstantPoolEntry find_interface_methodref(self, str classname, str methodname, str methodtype, bint put=?) except *
     
     
 
