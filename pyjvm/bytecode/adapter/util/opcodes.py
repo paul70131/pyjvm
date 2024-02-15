@@ -1,4 +1,5 @@
 from enum import IntEnum
+from typing import Any
 
 class Opcodes(IntEnum):
     NOP = 0

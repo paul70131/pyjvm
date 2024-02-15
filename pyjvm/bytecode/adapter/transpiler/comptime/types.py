@@ -27,18 +27,57 @@ class ComptimeType:
     def __repr__(self):
         return f"{self.__class__.__name__}"
 
+class ComptimeUninitialized(ComptimeType):
+    primitive = None
+    java_type = None
+    implements_primitive = []
+    stackMapType = "uninitialized"
+
 class ComptimeObject(ComptimeType):
     primitive = None
     java_type = "java/lang/Object"
     implements_primitive = []
 
+    @property
+    def stackMapType(self):
+        return f"L{self.java_type};"
+
     def __init__(self, java_type):
         self.java_type = java_type
+
+
+class ComptimeActualInt(ComptimeType):
+    primitive = "I"
+    java_type = "I"
+    stackMapType = "int"
+
+class ComptimeActualLong(ComptimeType):
+    primitive = "J"
+    java_type = "J"
+    stackMapType = "long"
+
+class ComptimeActualDouble(ComptimeType):
+    primitive = "D"
+    java_type = "D"
+    stackMapType = "double"
+
+class ComptimeActualFloat(ComptimeType):
+    primitive = "F"
+    java_type = "F"
+    stackMapType = "float"
+
+class ComptimeThis(ComptimeObject):
+    stackMapType = "Ljava/lang/Object;"
+    
+    def __init__(self):
+        super().__init__("java/lang/Object")
 
 class ComptimeNull(ComptimeObject):
     primitive = None
     java_type = "java/lang/Object"
     implements_primitive = []
+
+    stackMapType = "null"
 
     def __init__(self):
         super().__init__("java/lang/Object")
@@ -77,18 +116,21 @@ class ComptimeLong(ComptimeType):
     primitive = "J"
     java_type = "java/lang/Long"
     implements_primitive = ["J", "I", "S", "B", "C"]
+    stackMapType = "Ljava/lang/Long;"
 
 class ComptimeDouble(ComptimeType):
     primitive = "D"
     java_type = "java/lang/Double"
     implements_primitive = ["D", "F"]
+    stackMapType = "Ljava/lang/Double;"
 
 class ComptimeBoolean(ComptimeType):
     primitive = "Z"
     java_type = "java/lang/Boolean"
     implements_primitive = ["Z"]
+    stackMapType = "Ljava/lang/Boolean;"
 
-class ComptimeMethod(ComptimeType):
+class ComptimeMethod(ComptimeObject):
     primitive = None
     java_type = "java/lang/reflect/Method"
     implements_primitive = []

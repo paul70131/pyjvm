@@ -70,9 +70,10 @@ cdef class VerificationTypeInfo:
     cdef unsigned int render(self, unsigned char* buffer) except 0
     cdef unsigned int size(self) except 0
 
-cdef class AppendFrame(StackMapFrame):
+cdef class FullFrame(StackMapFrame):
     cdef unsigned short offset_delta
     cdef list[VerificationTypeInfo] locals
+    cdef list[VerificationTypeInfo] stack
 
     cdef unsigned int render(self, unsigned char* buffer) except 0
     cdef unsigned int size(self) except 0

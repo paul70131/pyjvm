@@ -21,14 +21,18 @@ class BINARY_SUBTRACT(PyOpcode):
 
         if isinstance(v1, ComptimeLong) and isinstance(v2, ComptimeLong):
             frame.stack.push(ComptimeLong())
+            
+            frame.pc += self.size
             return
 
         if isinstance(v1, ComptimeDouble) or isinstance(v2, ComptimeDouble):
             frame.stack.push(ComptimeDouble())
+            frame.pc += self.size
             return
 
         if isinstance(v1, ComptimeObject) or isinstance(v2, ComptimeObject):
             frame.stack.push(ComptimeObject("java/lang/Object"))
+            frame.pc += self.size
             return
 
         frame.pc += self.size

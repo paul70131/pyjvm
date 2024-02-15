@@ -273,40 +273,65 @@ cdef class VerificationTypeInfo:
             buffer[2] = self.cpool_index & 0xFF
         return self.size()
 
-cdef class AppendFrame(StackMapFrame):
+cdef class FullFrame(StackMapFrame):
 #    cdef unsigned short offset_delta
 #    cdef list[VerificationTypeInfo] locals
 
-    def __init__(self, unsigned short offset_delta, list[str] locals, JvmBytecodeConstantPool cp):
-        if len(locals) > 4:
-            raise Exception("Too many locals for append frame, use full frame instead")
-        if len(locals) == 0:
-            raise Exception("No locals for append frame")
-
+    def __init__(self, unsigned short offset_delta, list[str] locals, list[str] stack, JvmBytecodeConstantPool cp):
         self.offset_delta = offset_delta
-        self.frame_type = 251 + len(locals)
+        self.frame_type = 255
         self.locals = []
         for local in locals:
             self.locals.append(VerificationTypeInfo(local, cp))
+        
+        self.stack = []
+        for local in stack:
+            self.stack.append(VerificationTypeInfo(local, cp))
 
     cdef unsigned int size(self) except 0:
         cdef unsigned int size = 3
         cdef VerificationTypeInfo local
         
+        size += 2
+
         for local in self.locals:
+            size += local.size()
+        
+        size += 2
+
+        for local in self.stack:
             size += local.size()
         
         return size
 
     cdef unsigned int render(self, unsigned char* buffer) except 0:
-        cdef unsigned short i = 3
+        cdef unsigned short i = 0
         cdef VerificationTypeInfo local
+
+        cdef unsigned short nlocals = len(self.locals)
+        cdef unsigned short nstack = len(self.stack)
         
         buffer[0] = self.frame_type
         buffer[1] = (self.offset_delta >> 8) & 0xFF
         buffer[2] = self.offset_delta & 0xFF
 
+        i += 3
+
+        buffer[i] = (nlocals >> 8) & 0xFF
+        buffer[i + 1] = nlocals & 0xFF
+
+        i += 2
+
         for local in self.locals:
+            local.render(buffer + i)
+            i += local.size()
+
+        buffer[i] = (nstack >> 8) & 0xFF
+        buffer[i + 1] = nstack & 0xFF
+
+        i += 2
+
+        for local in self.stack:
             local.render(buffer + i)
             i += local.size()
         
@@ -331,8 +356,8 @@ cdef class StackMapTableAttribute(JvmBytecodeAttribute):
         
         return size
 
-    def append(self, unsigned short offset_delta, list[str] locals, JvmBytecodeConstantPool cp):
-        self.frames.append(AppendFrame(offset_delta, locals, cp))
+    def append(self, unsigned short offset_delta, list[str] locals, list[str] stack, JvmBytecodeConstantPool cp):
+        self.frames.append(FullFrame(offset_delta, locals, stack, cp))
 
     cdef unsigned int render(self, unsigned char* buffer) except 0:
         cdef unsigned int length = self.size() - 6

@@ -17,9 +17,9 @@ class JUMP_ABSOLUTE(PyOpcode):
 
     def transpile(self, bc: BytecodeWriter, op_stack: Stack, locals: list, locals_offset: int, cp, m):
         # we need to pop the value from the stack and store it in the locals
-        bc.bc(Opcodes.GOTO)
-
+        
         self.target = m.create_label(self.value, 2)
+        bc.bc(Opcodes.GOTO)
         bc.s2(self.target)
 
     def verify(self, stack: Frame):

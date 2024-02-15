@@ -4,13 +4,23 @@ class BytecodeLabel:
         self.offset = 0
         self.size = size
         self.bc_offset = -1
+        self.jbc_offset = -1
 
     def resolve(self, offset: int):
-        self.offset = offset - self.bc_offset + 1
+        if self.bc_offset == -1 or self.jbc_offset == -1:
+            raise Exception(f"Label {self.target} was not resolved")
+        if self.offset != 0:
+            return
+        
+        self.offset =  offset - self.jbc_offset
+
 
 class BytecodeWriter:
     data: list[int]
     bc_offset: int
+
+    def addStackMapFrame(self, stack, locals, pc, cp):
+        self.stack_map_table.append(stack, locals, pc, cp)
 
     def save_labels(self):
         for label in self._labels:
@@ -19,19 +29,20 @@ class BytecodeWriter:
             
             # write label.offset and label.bc_offset with label.size
             for i in range(label.size):
-                self.data[label.bc_offset + i] = label.offset >> (8 * (label.size - i - 1)) & 0xff
+                self.data[label.jbc_offset + i + 1] = label.offset >> (8 * (label.size - i - 1)) & 0xff
 
 
-    def __init__(self, line_number_table = None):
+    def __init__(self, line_number_table = None, stack_map_table = None):
         self.data = []
         self.bc_offset = 0
         self.line_number_table = line_number_table
+        self.stack_map_table = stack_map_table
         self.line_offset = 1
         self._labels = []
 
     def nextLine(self, line:int = -1):
         if line == -1:
-            line = self.line_offset + 1
+            line = self.line_offset
         self.line_number_table.append(self.bc_offset, line)
         self.line_offset = line
 
@@ -47,9 +58,13 @@ class BytecodeWriter:
     def u1(self, v:int):
         self._write(v)
 
+    def start_instruction(self):
+        self.last_start = self.size()
+
     def u2(self, v:int):
         if isinstance(v, BytecodeLabel):
-            v.bc_offset = self.size()
+            v.bc_offset = self.last_start
+            v.jbc_offset = self.size() - 1
             self._labels.append(v)
             v = 0
         self._write(v >> 8)
@@ -57,7 +72,8 @@ class BytecodeWriter:
 
     def s2(self, v: int):
         if isinstance(v, BytecodeLabel):
-            v.bc_offset = self.size()
+            v.bc_offset = self.last_start
+            v.jbc_offset = self.size() - 1
             self._labels.append(v)
             v = 0
         # Ensure v fits into a signed 16-bit integer range (-32768 to 32767)

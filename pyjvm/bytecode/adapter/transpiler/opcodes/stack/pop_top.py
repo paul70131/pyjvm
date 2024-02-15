@@ -18,6 +18,7 @@ class POP_TOP(PyOpcode):
 
 
     def verify(self, stack: Frame):
+        stack.stack.pop()
         stack.pc += 1
 
     def transpile(self, bc: BytecodeWriter, op_stack: Stack, locals: list, locals_offset: int, cp, m):

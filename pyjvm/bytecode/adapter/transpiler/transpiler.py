@@ -1,9 +1,9 @@
 from pyjvm.bytecode.adapter.util.bytecode_writer import BytecodeWriter, BytecodeLabel
 from pyjvm.bytecode.adapter.util.opcodes import Opcodes
 
-from pyjvm.bytecode.adapter.transpiler.comptime.types import ComptimeType, ComptimeLong, ComptimeDouble, ComptimeBoolean, ComptimeString, ComptimePyObject, ComptimeObject
+from pyjvm.bytecode.adapter.transpiler.comptime.types import ComptimeType, ComptimeActualDouble, ComptimeActualInt, ComptimeActualLong, ComptimeThis, ComptimeNull, ComptimeLong, ComptimeDouble, ComptimeBoolean, ComptimeString, ComptimePyObject, ComptimeObject
 from pyjvm.bytecode.adapter.transpiler.comptime.stack import Stack
-from pyjvm.bytecode.adapter.transpiler.comptime.frame import Frame
+from pyjvm.bytecode.adapter.transpiler.comptime.frame import Frame, FrameRecord
 
 from .opcodes import get_opcode
 from queue import LifoQueue
@@ -34,11 +34,12 @@ class TranspiledMethod:
 
     return_type: str
 
-    def __init__(self, cp, method_name: str, method: Callable, line_number_table, descriptor):
+    def __init__(self, cp, method_name: str, method: Callable, line_number_table, stack_map_table, descriptor):
         self.cp = cp
         self.method_name = method_name
         self.method = method
-        self.bytecode = BytecodeWriter(line_number_table)
+
+        self.bytecode = BytecodeWriter(line_number_table, stack_map_table)
 
         self.signature = descriptor.signature
         self.return_type = descriptor.ret
@@ -82,25 +83,23 @@ class TranspiledMethod:
         #javaLangObject = CP_Class.insert(self.class_file.constant_pool, "java/lang/Object")
         javaLangObject = self.cp.find_class("java/lang/Object", True)
 
-        self.bytecode.bc(Opcodes.NOP)
-        self.bytecode.nextLine()
-
         op_stack = Stack()
         locals = [None] * code.co_nlocals 
         locals_offset = code.co_argcount
+        self.code = code
+        self.locals_offset = locals_offset
 
         self.do_arg_conversion(locals_offset, locals, code)
         startlocals = locals.copy()
 
         bcmap = {}
 
-        start_pc = self.bytecode.size()
         instructions = list(dis.get_instructions(self.method))
         for bc in instructions:
             opc = get_opcode(bc.opcode, bc)
             if opc:
                 before = self.bytecode.size()
-                opc.transpile(self.bytecode, op_stack, locals, locals_offset, self.cp, self)
+                opc._transpile(self.bytecode, op_stack, locals, locals_offset, self.cp, self)
                 opc.size = self.bytecode.size() - before
                 opc.verified = False
                 opc.py_loc = bc.offset
@@ -109,9 +108,17 @@ class TranspiledMethod:
         self.fill_labels(instructions, bcmap)
 
         self.bytecode.nextLine()
-        vframe = Frame(startlocals, start_pc)
+        vframe = Frame(startlocals, 0)
         frames = self.verify(vframe, bcmap)
-        print(frames)
+
+        records: list[FrameRecord] = list(vframe.stackMapTable.values())
+        records.sort(key=lambda x: x.pc)
+
+        for frame in frames:
+            frame: Frame
+            frame.reset()
+            frame.execute(self.bytecode.bytes(), self.cp)
+
 
     def fill_labels(self, instructions: list[Instruction], bcmap: dict):
         labels = self.bytecode._labels
@@ -129,6 +136,11 @@ class TranspiledMethod:
 
     def verify(self, frame: Frame, bcmap: dict):
         frames = []
+
+        if frame.initial:
+            self.verifyArgConversion(frame)
+            frames.append(frame)
+
         while not frame.returned:
             bc = bcmap[frame.pc]
             if bc.verified:
@@ -146,6 +158,41 @@ class TranspiledMethod:
     def create_label(self, py_loc, size):
         return BytecodeLabel(py_loc, size)
 
+    def verifyArgConversion(self, frame: Frame):
+        for i in range(self.code.co_argcount):
+            if i == 0:
+                sig = "L..."
+            else:
+                sig = self.args[i - 1]
+            
+            if sig[0] == "L":
+                if sig == "L...":
+                    frame.stack.push(ComptimeObject("java/lang/Object"))
+                else:
+                    frame.stack.push(ComptimeObject(sig[1:]))
+                frame.pc += 2 # aload
+        
+                frame.locals[self.locals_offset + i] = frame.stack.pop()
+                frame.pc += 2 # astore
+            
+            elif sig == "I" or sig == "B" or sig == "C" or sig == "S":
+                # aload
+                frame.stack.push(ComptimeActualInt())
+                frame.pc += 2
+                frame.stack.pop()
+                frame.stack.push(ComptimeActualLong())
+                frame.pc += 1
+                frame.stack.pop()
+                frame.stack.push(ComptimeLong())
+                frame.pc += 3 # invokestatic
+                frame.locals[self.locals_offset + i] = frame.stack.pop()
+                frame.pc += 2 # astore
+            
+
+                
+
+            
+
 
     def do_arg_conversion(self, offset: int, locals, code):
 
@@ -162,7 +209,10 @@ class TranspiledMethod:
                 self.bytecode.bc(Opcodes.ASTORE)
                 self.bytecode.u1(offset + i)
 
-                locals[i] = ComptimeObject(sig[1:])
+                if sig == "L...":
+                    locals[i] = ComptimeThis()
+                else:
+                    locals[i] = ComptimeObject(sig[1:])
                 
             elif sig == "I" or sig == "B" or sig == "C" or sig == "S":
                 self.bytecode.bc(Opcodes.ILOAD)

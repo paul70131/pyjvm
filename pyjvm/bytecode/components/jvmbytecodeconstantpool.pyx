@@ -393,6 +393,13 @@ cdef class JBCPE_Methodref(JvmBytecodeConstantPoolEntry):
     cpdef int size(self):
         return 5
 
+    def signature(self, cp):
+        cdef JBCPE_NameAndType nt = <JBCPE_NameAndType>cp.get(self.name_and_type_index - 1)
+        cdef JBCPE_Utf8 name = <JBCPE_Utf8>cp.get(nt.name_index - 1)
+        cdef JBCPE_Utf8 sig = <JBCPE_Utf8>cp.get(nt.descriptor_index - 1)
+
+        return (name, sig)
+
     cdef int render(self, unsigned char* buffer) except -1:
         buffer[0] = self.tag
         buffer[1] = self.class_index >> 8
@@ -415,6 +422,13 @@ cdef class JBCPE_InterfaceMethodref(JvmBytecodeConstantPoolEntry):
             self.class_index = class_idx
         if name_and_type_idx:
             self.name_and_type_index = name_and_type_idx
+
+    def signature(self, cp):
+        cdef JBCPE_NameAndType nt = <JBCPE_NameAndType>cp.get(self.name_and_type_index - 1)
+        cdef JBCPE_Utf8 name = <JBCPE_Utf8>cp.get(nt.name_index - 1)
+        cdef JBCPE_Utf8 sig = <JBCPE_Utf8>cp.get(nt.descriptor_index - 1)
+
+        return (name, sig)
     
     cpdef int size(self):
         return 5
@@ -596,7 +610,7 @@ cdef class JBCPE_Utf8(JvmBytecodeConstantPoolEntry):
     cdef unsigned char* bytes
 
     def __str__(self):
-        return str(self.bytes)
+        return self.bytes.decode("utf-8")
 
     def __init__(self, str py_string = None):
         cdef unsigned char* cb
